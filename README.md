@@ -2,6 +2,10 @@
 
 __English summary__: This repository contains the source materials for the book "Vývoj webových aplikácii v prostredí Cloud" (Development of web applications in the Cloud environment) originaly written in Slovak language. The original book is available at http://wac-fiit.milung.eu/ translated book is avalable at TODO.
 
+__Original book sources__: Original book is written by Milan Unger as part of a Course on Slovak University of Technology in Bratislava, Faculty of Informatics and Information Technologies. The original book sources are available at https://github.com/milung/wac-textbook.
+
+__English translation__: The translation to English was created to make the book available to a wider audience. The translation is mainly done by ChatGPT and reviewed by the author of this repository. The translation is not perfect and may contain errors. If you find any errors, please create an issue or a pull request.
+
 Materials are licensed under the [Creative Commons Attribution 4.0 International (CC BY 4.0) license](https://creativecommons.org/licenses/by/4.0/).
 
 Markdown files and images for generating study materials for "Development of web applications in the Cloud environment" (WAC).
