@@ -1,7 +1,7 @@
 
 [sports-score> Exercise Goal](./000-README.md#goal)
 [home-work> Exercise Preparation](./000-README.md#preparation)
-[$chrome> Application Skeleton](./010-kostra.md)
+[$chrome> Application Skeleton](./010-skeleton.md)
 [$git-alt> Repository Creation and Code Archiving](./020-git-repo.md)
 [precision-manufacturing> Automated Continuous Integration (*Continuous Integration*)](./030-ci.md)
 [$docker> Application Containerization](./041-ufe-containerization.md)
