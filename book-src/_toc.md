@@ -1,25 +1,24 @@
-
-[$graduation-cap> Úvod](./README.md)
-
-<hr />
-
-[Ukážková aplikácia](./ukazkova-aplikacia.md)
+[$graduation-cap> Introduction](./README.md)
 
 <hr />
 
-[Moderné webové aplikácie (_Single Page Applications_)](./theory/00-README.md)
+[Sample Application](./ukazkova-aplikacia.md)
+
+<hr />
+
+[Modern Web Applications (_Single Page Applications_)](./theory/00-README.md)
 
 [#include theory/_toc.md]
 
 <hr />
 
-## [language> Používateľské rozhranie s WebComponents](dojo/01.Web-Components/000-README.md)
+## [language> User Interface with WebComponents](dojo/01.Web-Components/000-README.md)
 
 [#include dojo/01.Web-Components/_toc.md]
 
 <hr />
 
-## [dns> WEB API v jazyku Go](dojo/02.WebApi-Go/000-README.md)
+## [dns> WEB API in Go](dojo/02.WebApi-Go/000-README.md)
 
 [#include dojo/02.WebApi-Go/_toc.md]
 
@@ -31,17 +30,10 @@
 
 <hr />
 
-## [build-circle> Riešenie problémov](dojo/99.Problems-Resolutions/000-README.md)
+## [build-circle> Frequent Problems](dojo/99.Problems-Resolutions/000-README.md)
 
 [#include dojo/99.Problems-Resolutions/_toc.md]
 
 <hr />
 
-## [history-edu> Archív](./archive/000-README.md)
-
-[#include archive/_toc.md]
-
-<hr />
-
 ## [library-books> Register](./_glossary.md)
-
