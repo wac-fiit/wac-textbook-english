@@ -1,92 +1,77 @@
-## Vytvorenie repozitára a archivácia kódu
+## Repository and Code Archiving
 
 ---
 
 >info:>
-Šablóna pre predvytvorený kontajner ([Detaily tu](../99.Problems-Resolutions/01.development-containers.md)):  
+Template for the pre-created container ([Details here](../99.Problems-Resolutions/01.development-containers.md)):
 `registry-1.docker.io/milung/wac-ufe-020`
 
 ---
 
-V tejto kapitole si vytvoríme nový repozitár a archivujeme kód. Využijeme na to
-služby poskytované na serveroch [GitHub]. Repozitár odporúčame vytvoriť ako verejný,
-nie je to ale podmienkou.
+In this chapter, we will create a new repository and archive the code. We will use the services provided on [GitHub]. It is recommended to create the repository as public, but it's not a requirement.
 
-1. Na stránke [GitHub] sa prihláste do svojho účtu a v hornom paneli rozbaľte tlačidlo označené
-   "+" a zvoľte _New Repository_.
-  ![Vytvorenie nového repozitára](./img/020-01-NewRepo.png)
+1. On the [GitHub] page, log in to your account, and in the top panel, click the "+" button and choose _New Repository_.
 
-2. V zobrazenom okne zvoľte meno repozitára `ambulance-ufe`, a ostatné voľby ponechajte v pôvodnom stave.  
-   Skontrolujte, že všetky možnosti v sekcii _Initialize this repository with:_ sú prázdne. Následne stlačte 
-   na tlačidlo _Create repository_.
+![Create a new repository](./img/020-01-NewRepo.png)
 
-   ![Vytvorenie nového repozitára](./img/020-02-CreateRepo.png)
+2. In the displayed window, choose the repository name `ambulance-ufe`, and leave the other options in their default state. Check that all options in the _Initialize this repository with:_ section are empty. Then click the _Create repository_ button.
 
-   Po vytvorení repozitára sa zobrazí stránka s pokynmi na vytvorenie lokálneho repozitára a jeho synchronizáciu so vzdialeným repozitárom.
-   V našom prípade budeme používať príkazy zobrazené v sekcii __…or push an existing repository from the command line__.
+![Create a new repository](./img/020-02-CreateRepo.png)
 
-3. Pokiaľ ste zvolili vytvorenie súkromného repozitára, zvoľte na zobrazenej stránke možnosť _Invite Collaborators_
-   a pridajte do repozitára cvičiacich ako spolupracovníkov tak, aby mali k repozitáru prístup.
-   Tento úkon im umožní analyzovať prípadné problémy vo Vašom kóde.
+After creating the repository, you will see a page with instructions to create a local repository and synchronize it with the remote repository.
+In our case, we will use the commands shown in the __...or push an existing repository from the command line__ section.
 
-4. Vo VS Code prejdite do priečinka `${WAC_ROOT}/ambulance-ufe` a inicializujte lokálny git repozitár príkazmi:
+3. If you chose to create a private repository, on the displayed page, choose the _Invite Collaborators_ option and add the exercise teachers as collaborators to give them access to the repository. This step allows them to analyze any issues in your code.
 
-    ```ps
-    git config --global init.defaultBranch main
-    git init
-    ```
+4. In VS Code, navigate to the `${WAC_ROOT}/ambulance-ufe` folder and initialize the local Git repository using the commands:
 
-    >info:> Prvým príkazom sme zmenili nastavenie názvu hlavnej vetvy na `main`.
+```ps
+git config --global init.defaultBranch main
+git init
+```
 
-5. Otvorte súbor `${WAC_ROOT}/ambulance-ufe/.gitignore` a skontrolujte, že obsahuje riadky so záznamom
-  `node_modules/`, `dist/`, `www/`, `loader/`. Tento súbor určuje, ktoré súbory a podpriečinky sa nemajú archivovať, čo vo väčšine prípadov znamená súbory,
-  ktoré sú vytvárané počas kompilácie zdrojových súborov a balíky, ktoré je možné získať automatizovaným spôsobom z dostupných zdrojov a iných archívov.
+>info:> With the first command, we changed the main branch's name to `main`.
 
-    ```ps
-    dist/ @_important_@
-    www/ @_important_@
-    loader/  @_important_@
-    ...
-    node_modules/ @_important_@
-    ...
-    ```
+5. Open the file `${WAC_ROOT}/ambulance-ufe/.gitignore` and make sure it contains lines with the entries `node_modules/`, `dist/`, `www/`, `loader/`. This file specifies which files and subdirectories should not be archived, which in most cases includes files generated during the compilation of source files and packages that can be obtained automatically from available sources and other archives.
 
-6. Pridajte a odovzdajte do archívu všetky lokálne súbory
+```ps
+dist/ @_important_@
+www/ @_important_@
+loader/  @_important_@
+...
+node_modules/ @_important_@
+...
+```
 
-    ```ps
-    git add .
-    git commit -m 'initial version of ambulance waiting list web component'
-    ```
+6. Add and commit all local files, and then push them to the repository.
 
-7. Prepojíme lokány repozitár s GitHub repozitárom. V nasledujúcom príkaze zameňte `<account>` za svoje používateľské meno na GitHub.
+```ps
+git add .
+git commit -m 'initial version of ambulance waiting list web component'
+```
 
-    >info:> Môžete použiť príkaz vygenerovaný na stránke vášho repozitára v [GitHub].
+7. Link your local repository to the GitHub repository. In the following command, replace `<account>` with your GitHub username.
 
-    ```ps
-    git remote add origin https://github.com/<account>/ambulance-ufe.git
-    ```
+>info:> You can use the command generated on your repository page on [GitHub].
 
-    _origin_ je meno, ktorým sme označili vzdialený repozitár
+```ps
+git remote add origin https://github.com/<account>/ambulance-ufe.git
+```
 
-8. Synchronizujte váš lokálny repozitár so vzdialeným repozitárom. Pri výzve zadajte svoje prihlasovacie údaje.
+_origin_ is the name we assigned to the remote repository.
 
-    >info:> Môžete použiť príkaz vygenerovaný na stránke vášho projektu v [GitHub].
+8. Synchronize your local repository with the remote repository. When prompted, enter your login credentials.
 
-    ```ps
-    git push --set-upstream origin main
-    ```
+>info:> You can use the command generated on your project page on [GitHub].
 
-    V prehliadači skontrolujte, že sú vaše súbory uložené vo vzdialenom repozitári.
+```ps
+git push --set-upstream origin main
+```
 
-    ![Synchronizovaný repozitár](./img/020-03-GitRepository.png)
+Check in your browser that your files are stored in the remote repository.
 
-Počas cvičení budeme používať zjednodušený vývojový proces a pracovať priamo na
-vetve `main` repozitára. Pri práci v tíme sa ale odporúča používať vývojový
-postup [_Fork and Pull Requests_](https://gist.github.com/Chaser324/ce0505fbed06b947d962).
+![Synchronized Repository](./img/020-03-GitRepository.png)
 
-Git repozitár je možné vytvoriť aj na iných serveroch, napríklad populárnych
-[Azure DevOps][azure-devops], [GitLabs][gitlab], alebo
-[Bitbucket][bitbucket]. Dôležitým kritériom pri výbere je podpora
-automatizovanej kontinuálnej integrácie a nasadenia, profesionálna podpora tímu
-a ľahká správa prostriedkov samotným vývojovým tímom. V kontexte tejto učebnice
-budeme pracovať so službami poskytovanými na serveroch [GitHub].
+During the exercises, we will use a simplified development process and work directly on the `main` branch of the repository. However, when working in a team, it is recommended to use the [_Fork and Pull Requests_](https://gist.github.com/Chaser324/ce0505fbed06b947d962) development workflow.
+
+You can create a Git repository on other servers as well, such as popular platforms like [Azure DevOps][azure-devops], [GitLab][gitlab], or [Bitbucket][bitbucket]. The criteria for choosing a platform include support for automated continuous integration and deployment, professional team support, and easy resource management for the development team itself. In the context of this tutorial, we will work with services provided on [GitHub].
