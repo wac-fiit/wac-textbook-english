@@ -1,63 +1,62 @@
-# Zdrojové materiály k skriptám k predmetu Vývoj webových aplikácii v prostredí Cloud
+# Resource materials for the subject Development of web applications in the Cloud environment translated into English
 
-__English summary__: This repository contains the source materials for the book "Vývoj webových aplikácii v prostredí Cloud" (Development of web applications in the Cloud environment) written in Slovak language. The book is available at http://wac-fiit.milung.eu/ .
+__English summary__: This repository contains the source materials for the book "Vývoj webových aplikácii v prostredí Cloud" (Development of web applications in the Cloud environment) originaly written in Slovak language. The original book is available at http://wac-fiit.milung.eu/ translated book is avalable at TODO.
 
 Materials are licensed under the [Creative Commons Attribution 4.0 International (CC BY 4.0) license](https://creativecommons.org/licenses/by/4.0/).
 
-Markdown súbory a obrázky pre generovanie skrípt "Vývoj webových aplikácii v prostredí Cloud" (WAC).
+Markdown files and images for generating study materials for "Development of web applications in the Cloud environment" (WAC).
 
-## Postup pri práci s repozitárom
+## Working with the Repository
 
-V adresári `book-src` sú uložené všetky podklady. Každá sekcia skrípt je uložená v samostatnom adresári. V adresári `book-src` je tiež súbor `_toc.md` s obsahom knihy. Ten obsahuje relatívne odkazy na jednotlivé kapitoly. Každá sekcia má potom vlastný súbor `_toc.md` s odkazmi na kapitoly v tejto sekcii. Obsah podsekcie možno do obsahu knihy alebo nadradenej sekcie zahrnúť pomocou príkazu `[#include sekcia/_toc.md]`. Tento príkaz, zároveň zabezpečí, že kapitoly podsekcie budu v navigačnom panely viditeľné, len ak je zobrazená podsekcia aj v hlavnom panely.
+In the `book-src` directory, all the materials are stored. Each section is stored in a separate directory. The `book-src` directory also contains the file `_toc.md` with the book's content. It includes relative links to individual chapters. Each section then has its own `_toc.md` file with links to chapters in that section. The content of a subsection can be included in the book or the parent section using the command `[#include section/_toc.md]`. This command also ensures that the chapters of the subsection are visible in the navigation panel only when the subsection is displayed in the main panel.
 
-V adresári `book-src` je tiež súbor `_links.md` s odkazmi na zdroje. Tento súbor sa automaticky pridá do každej kapitoly a uvedené linky potom možno používať len pomocou symbolických mien. Odporúčam používať na miestach kde sa odkazuje na externé zdroje, pokiaľ tieto zdroje nie sú veľmi špecifické. To umožní generovať zoznam literatúry, ako aj upraviť odkazy na jednom mieste.
+In the `book-src` directory, there is also the file `_links.md` with links to resources. This file is automatically added to each chapter, and the listed links can be used using symbolic names. It is recommended to use it in places where references to external sources are made, unless these sources are very specific. This allows generating a bibliography list and modifying references in one place.
 
-## Prispievanie do knihy
+## Contributing to the Book
 
-Najvhodnejším spôsobom je využitie [Development Container](https://containers.dev/overview) pri práci s knihou, napríklad vytvorenie nového [Github Codespaces](https://github.com/features/codespaces) alebo otvorenie Development Container-u pomocou [Visual Studio Code Remote - Containers](https://code.visualstudio.com/docs/remote/containers).
+The most suitable way is to use [Development Container](https://containers.dev/overview) when working with the book, such as creating a new [Github Codespaces](https://github.com/features/codespaces) or opening the Development Container using [Visual Studio Code Remote - Containers](https://code.visualstudio.com/docs/remote/containers).
 
-Vývojový kontajner vytvorí `postStartCommand` proces, ktorý vytvorí http server počúvajúci na porte `3380`. Po otvorení portu (v záložke _Ports_) uvidíte aktuálnu verziu skrípt v prehliadači. Aby sa Vaše zmeny ihneď prejavili, musíte v prehliadači otvoriť _Vývojarské nástroje_ a zakázať vyrovnávaciu pamäť v záložke _Sieť_.
+The development container creates a `postStartCommand` process that creates an HTTP server listening on port `3380`. After opening the port (in the _Ports_ tab), you can see the current version of the script in the browser. To immediately reflect your changes, disable caching in the browser in the _Network_ tab of the _Developer Tools_.
 
-V prípade, že proces zlyhá - napríklad generovanie nového obsahu nie je automaticky reflektované, prerušte proces `postStartCommand`, otvorte nový Powershell terminál, prejdite do priečinka `wac-textbook` a vykonajte príkaz
+In case the process fails—for example, if generating new content is not automatically reflected—terminate the `postStartCommand` process, open a new PowerShell terminal, navigate to the `wac-textbook` folder, and execute the command:
 
 ```ps
 ./scripts/run.ps1 devc-start
 ```
 
-## Generovanie knihy
+## Generating the Book
 
-Novú verziu knihy možno vygenerovať pomocou komitu zmien do vetvy `main` a vytvorením nového release-u s tagom vo formáte `v1.*.*`. Tento tag spustí GitHub Action, ktorý vygeneruje novú verziu knihy a zverejní ju na stránke http://wac-fiit.milung.eu/.
+A new version of the book can be generated by committing changes to the `main` branch and creating a new release with a tag in the format `v1.*.*`. This tag triggers a GitHub Action that generates a new version of the book and publishes it on the website TODO.
 
-## Špecifické rozšírenie v markdown:
+## Specific Markdown Extension:
 
-V súboroch `_toc.html` môžete definovať vlastné ikony kapitoly pomocou nasledujúcej syntaxe: `[$icon-name> Label](<link-url>)`. Názov ikony je názov ikony z knižnice [fontawesome](https://fontawesome.com/icons?d=gallery). Za názvom ikony nasleduje znak `>` a pred ním je znak `$`. `label` je text hypertextového odkazu. Ak názvu ikony nie je predradený znak `$`, potom sa ikona prevezme z knižnice [Material Symbols](https://fonts.google.com/icons). Názov ikony používa pomlčku `-` namiesto podčiarkovníka `_`, tak ako v knižnici fontawesome.
+In the `_toc.html` files, you can define custom chapter icons using the following syntax: `[$icon-name> Label](<link-url>)`. The icon name is the name of the icon from the [fontawesome](https://fontawesome.com/icons?d=gallery) library. The icon name is followed by the `>` character, and before it is the `$` character. `label` is the text of the hyperlink. If the icon name is not prefixed with the `$` character, the icon is taken from the [Material Symbols](https://fonts.google.com/icons) library. The icon name uses a hyphen `-` instead of an underscore `_`, as in the fontawesome library.
 
-Príklad `_toc.md`:
+Example `_toc.md`:
 
 ```markdown
-[$graduation-cap> Úvod](./README.md)
-[Prológ](./prologue.md)
+[$graduation-cap> Introduction](./README.md)
+[Prologue](./prologue.md)
 
 <hr />
-## [language> Kapitola 1: Vývoj webu](dojo/web/000-README.md)
+## [language> Chapter 1: Web Development](dojo/web/000-README.md)
 
 [#include dojo/web/_toc.md]
 <hr />
 ```
 
-### Poznámky s ikonami
+### Notes with Icons
 
-Blokovú citáciu s ikonou môžete umiestniť pomocou nasledujúcej syntaxe: `>$icon-name:> Text blokovej citácie`. Názov ikony je názov ikony z knižnice [fontawesome](https://fontawesome.com/icons?d=gallery). Za menom ikony nasledujú znaky `:>` a pred ním je znak `$`.  Ak názov ikony nie je prefixovaný znakom `$`, potom je ikona prevzatá z knižnice [Material Symbols](https://fonts.google.com/icons).
+You can place a block quote with an icon using the following syntax: `>$icon-name:> Block quote text`. The icon name is the name of the icon from the [fontawesome](https://fontawesome.com/icons?d=gallery) library. The icon name is followed by the characters `:>` and before it is the `$` character. If the icon name is not prefixed with the `$` character, the icon is taken from the [Material Symbols](https://fonts.google.com/icons) library.
 
-Používajte tieto ikony:
+Use these icons:
 
-- `>info:>` pre doplňujúce informácie
-- `>warning:>` pre dôležité informácie
-- `>build_circle:>` pre riešenie možných problémov
-- `>$apple:>` pre Mac Os špecifické informácie
-- `>homework:>` pre označenie samostatnej práce
+- `>info:>` for additional information
+- `>warning:>` for important information
+- `>build_circle:>` for addressing potential issues
+- `>$apple:>` for Mac OS-specific information
+- `>homework:>` for marking individual work
 
-### Zvýraznené bloky kódu
+### Highlighted Code Blocks
 
- Vo vnútri bloku môžete označiť riadok ako vložený umiestnením textu `@_add_@` na tento riadok; alebo môžete označiť riadok ako odstránený umiestnením textu `@_remove_@` na tento riadok; alebo môžete označiť riadok ako dôležitý umiestnením textu `@_important_@` na tento riadok. Vykreslenie tohto riadku sa zvýrazní príslušnou farbou, samotné značky ako aj odstránené riadky nie sú pri kopírovaní vložené do schránky.
-
+Inside a block, you can mark a line as inserted by placing the text `@_add_@` on that line; or you can mark a line as removed by placing the text `@_remove_@` on that line; or you can mark a line as important by placing the text `@_important_@` on that line. The rendering of this line will be highlighted with the respective color. The markers as well as the removed lines are not inserted into the clipboard when copying.
