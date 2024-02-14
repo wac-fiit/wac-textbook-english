@@ -1,92 +1,64 @@
-# Cvičenie: Web aplikácia pomocou knižnice Stencil JS
+# Exercise: Web Application using Stencil JS
 
-## <a name="ciel"></a>Cieľ cvičenia
+## <a name="goal"></a>Exercise Goal
 
-Pri cvičení sa naučíte vytvoriť jednoduchú aplikáciu založenú na technológii [WebComponents][webc].
-Naučíte sa ako túto aplikáciu zapúzdriť do samostatného softvérového kontajnera a ako túto aplikáciu
-nasadiť do existujúcej webovej stránky bežiacej na platforme Kubernetes. Tiež sa naučíte využívať
-knižnicu [Material Design Web Components][md-webc] na štylizovanie vizuálnej podoby aplikácie a vytvoriť
-API špecifikáciu a vygenerovať klienta pre túto špecifikáciu pomocou nástroja [OpenAPI][openapi].
+In this exercise, you will learn to create a simple application based on the [WebComponents][webc] technology. You will learn how to encapsulate this application into a standalone software container and how to deploy it to an existing web page running on the Kubernetes platform. You will also learn to use the [Material Design Web Components][md-webc] library to style the visual appearance of the application and create an API specification, generating a client for this specification using the [OpenAPI][openapi] tool.
 
-## Použité technológie
+## Used Technologies
 
-Aplikácia:
+The application:
 
-* je implementovaná v jazyku [TypeScript][typescript] s využitím aplikačnej knižnice [Stencil JS][stencil] 
-vo forme [webových komponentov][webc],
-* je vytvorená technikou micro Front End a integrovaná do existujúceho webového aplikačného rozhrania formou dynamicky načítavaných webových komponentov,
-* je nasadená ako sada softvérových kontajnerov v systéme [Kubernetes][kubernetes],
-* využíva knižnicu webových komponentov [Material Design Web Components][md-webc] za účelom štylizovania vizuálnej podoby aplikácie.
+* is implemented in [TypeScript][typescript] using the [Stencil JS][stencil] application library in the form of [web components][webc],
+* is created using the micro Front End technique and integrated into an existing web application interface through dynamically loaded web components,
+* is deployed as a set of software containers in the [Kubernetes][kubernetes] system,
+* uses the [Material Design Web Components][md-webc] library for styling the visual appearance of the application.
 
-Pri voľbe technológií sme sa snažili o to, aby sme použili technológie, ktoré sú v súčasnosti využívané v praxi
-a zároveň spĺňajú ciele cvičenia. Pre väčšinu technológií existujú aj iné alternatívy a v prípade záujmu ich
-môžete použiť namiesto tých, ktoré sú v tomto cvičení použité. Podmienkou je, aby výsledná aplikácia bola vytvorená
-ako [webový komponent][webc] a bola nasadená ako softvérový kontajner v systéme [Kubernetes][kubernetes]. Najmä v prípade,
-ak sa rozhodnete použiť inú technológiu ako [Stencil JS][stencil] na vytvorenie webového komponentu, je potrebné aby výsledná
-implementácia používala [Shadow DOM][shadow-dom] a [Custom Elements][custom-elements] špecifikáciu.
+When choosing technologies, we aimed to use those that are currently used in practice and meet the goals of the exercise. For most technologies, there are alternative options, and if interested, you can use them instead of those used in this exercise. The condition is that the resulting application is created as a [web component][webc] and deployed as a software container in the [Kubernetes][kubernetes] system. Especially if you decide to use a technology other than [Stencil JS][stencil] to create a web component, the resulting implementation must use the [Shadow DOM][shadow-dom] and [Custom Elements][custom-elements] specifications.
 
-V prípade zvolených technológií sa najčastejšie vyskytuje otázka, prečo sme zvolili [Stencil JS][stencil] namiesto
-iných alternatív ako napríklad [Angular][angular], [React][react] alebo [Vue][vue]. Dôvodom je, že [Stencil JS][stencil]
-je knižnica, ktorá je primárne zameraná na vytváranie webových komponentov a je založená na štandardoch [WebComponents][webc],
-zatiaľ čo v iných alternatívach je vývoj webových komponentov len "pridaná možnosť".
-Hoci je teda možné použiť aj iné knižnice, v prípade [Stencil JS][stencil] je výhodou,
-že sa jedná o pomerne jednoduchú nadstavbu nad technológiou [WebComponents][webc], čo nám umožní viac sa zamerať na ostatné 
-aspekty full-stack vývoja a zároveň si plne osvojiť technológiu [WebComponents][webc].
+In the case of the chosen technologies, the question often arises, why we chose [Stencil JS][stencil] instead of other alternatives such as [Angular][angular], [React][react], or [Vue][vue]. The reason is that [Stencil JS][stencil] is a library primarily focused on creating web components and is based on the [WebComponents][webc] standards, while in other alternatives, the development of web components is just an "added option." Therefore, although it is possible to use other libraries, in the case of [Stencil JS][stencil], the advantage is that it is a relatively simple overlay on the [WebComponents][webc] technology, allowing us to focus more on other aspects of full-stack development while fully mastering the [WebComponents][webc] technology.
 
-## <a name="zadanie"></a>Zadanie cvičenia
+## <a name="assignment"></a>Exercise Assignment
 
-Vytvorenie web rozhrania pre správu čakárne ambulancie. Základná funkcionalita:
+Create a web interface for managing the waiting room of a clinic. Basic functionality:
 
-Aplikáciu používajú dvaja používatelia: Pacient a Ambulantná sestra
+Two types of users will use the application: Patient and Clinic Nurse
 
-* Pacient
-  * Ako pacient chcem prísť do ambulancie, zadať svoje rodné číslo (alebo číslo
-  pacienta) a zaradiť sa do poradia čakajúcich. Chcem, aby mi systém oznámil
-  moje poradie a orientačnú dobu, kedy budem vyšetrený.
-  * Ako pacient s akútnym ochorením (úraz, vysoká teplota) alebo s nárokom
-  na prednostné ošetrenie (napríklad tehotenstvo) chcem, aby som po príchode do
-  čakárne zadal svoje rodné číslo a zaradil sa do zoznamu čakajúcich s prednostným
-  ošetrením.
-  * Ako pacient čakajúci v ambulancii chcem mať vizuálny prehľad o aktuálnom
-  stave môjho poradia.
-* Ambulantná sestra
-  * Ako sestra ambulancie chcem mať prehľad o počte a identite čakajúcich pacientov a ďalšom pacientovi v poradí.
-  * Ako sestra ambulancie chcem vedieť, koľko a ktorí pacienti čakajú na lekárske
-   vyšetrenie, ktorí čakajú na prednostné ošetrenie, a ktorí čakajú na vybavenie
-    administratívneho úkonu.
-  * Ako sestra ambulancie, v prípade posúdenia vážneho stavu pacienta, chcem mať možnosť zmeniť poradie čakajúcich.
+* Patient
+  * As a patient, I want to come to the clinic, enter my ID number (or patient number), and join the queue. I want the system to inform me of my position and the approximate time when I will be examined.
+  * As a patient with an acute illness (injury, high temperature) or with a claim to priority treatment (e.g., pregnancy), I want to enter my ID number upon arrival at the waiting room and join the list of priority patients.
+  * As a patient waiting in the clinic, I want to have a visual overview of the current status of my queue.
+* Clinic Nurse
+  * As a clinic nurse, I want an overview of the number and identity of waiting patients and the next patient in line.
+  * As a clinic nurse, I want to know how many patients are waiting for a medical examination, how many are waiting for priority treatment, and how many are waiting for administrative processing.
+  * As a clinic nurse, in the case of assessing a patient's serious condition, I want the option to change the order of waiting patients.
 
-## Technické ohraničenia:
+## Technical Limitations:
 
-* Aplikácia je implementovaná v programovacom jazyku TypeScript s využitím
-  aplikačnej knižnice [Stencil JS][stencil] vo forme [webových komponentov][webc].
-* Aplikácia je vytvorená technikou micro Front End a integrovaná do existujúceho
-  webového aplikačného rozhrania formou dynamicky načítavaných webových komponentov.
-* Aplikácia je nasadená ako sada softvérových kontajnerov v systéme
-  [Kubernetes][kubernetes].
-* Aplikácia využíva knižnicu webových komponentov [Material Design Web Components][md-webc] za účelom štylizovania vizuálnej podoby aplikácie.
+* The application is implemented in the TypeScript programming language using the [Stencil JS][stencil] application library in the form of [web components][webc].
+* The application is created using the micro Front End technique and integrated into an existing web application interface through dynamically loaded web components.
+* The application is deployed as a set of software containers in the [Kubernetes][kubernetes] system.
+* The application uses the [Material Design Web Components][md-webc] library for styling the visual appearance of the application.
 
-## <a name="priprava"></a>Príprava na cvičenie
+## <a name="preparation"></a>Preparation for Exercise
 
-* Inštalácia [Node JS][nodejs], latest version
-  * Odporúčame pozrieť nástroj **nvm** na správu verzií NodeJS (v praxi sa môžete stretnúť s projektami vyžadujúcimi rôzne verzie)
-* Inštalácia [Visual Studio Code][vscode]
-* Nainštalované rozšírenia vo Visual Studio Code:
+* Installation of [Node JS][nodejs], latest version
+  * We recommend checking the **nvm** tool for managing NodeJS versions (in practice, you may encounter projects requiring different versions).
+* Installation of [Visual Studio Code][vscode]
+* Installed extensions in Visual Studio Code:
   * [ESLint (dbaeumer.vscode-eslint)](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
-* Inštalácia [Git][git]
-* Vytvorený účet na [GitHub]
-* Vytvorený účet na [Microsoft Azure Cloud](https://azure.microsoft.com/en-us/free/students/)
-* Predbežné zoznámenie sa s jazykom [TypeScript][typescript]
-  a s knižnicou [Stencil JS][stencil]
-* Nainštalovaný systém [Docker Desktop][docker-desktop] s aktivovaným subsystémom [kubernetes][kubernetes], prípadne funkčná inštalácia balíčka docker a minikube na systéme Linux.
-* Vytvorený účet na stránke [Docker Hub][docker-hub]
+* Installation of [Git][git]
+* Created an account on [GitHub]
+* Created an account on [Microsoft Azure Cloud](https://azure.microsoft.com/en-us/free/students/)
+* Preliminary familiarization with the [TypeScript][typescript] language and the [Stencil JS][stencil] library.
+* Installed [Docker Desktop][docker-desktop] with the enabled [kubernetes][kubernetes] subsystem, or a functional installation of the docker package and minikube on the Linux system.
+* Created an account on [Docker Hub][docker-hub]
 
-## Pracovné prostredie
+## Working Environment
 
-V cvičeniach prepokladáme, že všetky aktivity budete realizovať pod jedným adresárom, ktorý je v texte označený ako `${WAC_ROOT}`. V tomto adresári budú vytvorené všetky repozitáre, ktoré budú vytvorené počas cvičenia a budú do neho umiestňované aj pomocné súbory. Odporúčame mať v tomto priečinku aj uložený workspace pre Visual Studio Code.
+In the exercises, we assume that all activities will be carried out under one directory, which is referred to in the text as `${WAC_ROOT}`. In this directory, all repositories created during the exercise will be stored, along with auxiliary files. We recommend keeping a workspace for Visual Studio Code in this folder.
 
-Príkazy, ktoré používame na príkazovom riadku predpokladajú použitie [PowerShell] prostredia, ktoré je štandardne dostupné na platforme Windows. Hoci väčšina príkazov je funkčná bez zmeny aj v prostredí [Bash], odporúčame používať [PowerShell] prostredie aj na platforme Linux a MacOS. Postup inštalácie je popísaný na stránke [Install PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell).
+The commands we use on the command line assume the use of the [PowerShell] environment, which is standardly available on the Windows platform. Although most commands work without modification in the [Bash] environment, we recommend using the [PowerShell] environment on Linux and MacOS as well. The installation procedure is described on the [Install PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell) page.
 
 ## Development Containers
 
-Na začiatku jednotlivých kapitol sú uvedené príkazy na aplikáciu šablón predvytvorených kontajnerov typu [Development Containers]. Tieto slúžia na inicializáciu projektu na začiatku kapitoly do predpokladaného stavu. Uvedený príkaz nie je za bežných okolností potrebný, slúži najmä na synchronizáciu stavu projektu medzi jednotlivými cvičeniami v prípade technických problémov. Podrobný postup je uvedený v kapitole [Riešenie Problémov](../99.Problems-Resolutions/01.development-containers.md).
+At the beginning of each chapter, commands for applying pre-created [Development Containers] template containers are provided. These are used to initialize the project at the beginning of the chapter to the expected state. The command given is not normally necessary and serves mainly to synchronize the project's state between individual exercises in case of technical problems. A detailed procedure is provided in the [Problem Solving](../99.Problems-Resolutions/01.development-containers.md) chapter.
