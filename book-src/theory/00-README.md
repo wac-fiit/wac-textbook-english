@@ -1,71 +1,15 @@
-## Moderné webové aplikácie (_Single Page Applications_)
+## Modern Web Applications (Single Page Applications)
 
-* [História webových aplikácií](./00-README.md)
-* [Formy realizácie dynamického obsahu na webe](./01-dynamics.md)
+### History of Web Applications
 
-### História webových aplikácií
+The original intention behind creating the HTTP protocol was to develop a system of hyper-text documents that would reference each other in a distributed network environment, known as the Internet. Initially, the documents were technical, containing scientific and professional information with an easy way to access referenced information. The practicality of this protocol was quickly embraced by the general public and led to the commercial use of information that became easily accessible to a wide audience. This increased interest in accessing the Internet from home and eventually led to the now relatively commonplace universal access to the Internet as a medium for providing, sharing, and searching for information.
 
-Pôvodný zámer pri vytváraní protokolu HTTP bol vytvoriť systém hyper-textových
-dokumentov, ktoré by na seba navzájom odkazovali v distribuovanom sieťovom
-prostredí siete Internet. Obsah dokumentov bol pôvodne odborný, obsahujúci
-vedecké a odborné informácie s jednoduchým spôsobom dohľadávania referencovaných
-informácii. Praktickosť tohto protokolu bola rýchlo využitá aj na prepájanie
-neodborných informácií, diskusií v rôznych fórach a na populárne informácie.
+Originally, documents were entirely static, containing only text in natural language and instructions for formatting the contained text. The change in content in the browser occurred only by transitioning to a new page after activating a hypertext link. This form of interaction still predominates on the Internet, especially when searching and linking information sources. However, due to relatively long network response times in the early development of the Internet, this interaction was insufficient and did not allow for effectively utilizing the Internet's potential, such as gathering user information like filling out and validating forms or controlling navigation based on user-indicated preferences. Two competing proposals aimed at including programming macros in the content of hypertext documents sought to address this issue. As a counterproposal to Microsoft's Basic-based script language VBScript, Netscape proposed the JavaScript language, officially known today as ECMAScript. This marked the beginning of the era of dynamic pages, at that time referred to as DHTML. The HTTP standard then allowed including code snippets in any language in the document. Although a scripting language based on Basic was considered, Netscape's proposal of the JavaScript language prevailed in the long run.
 
-S príchodom prvých grafických prehliadačov (Netscape Mosaic, Internet Explorer)
-začala internet a HTTP protokol využívať aj laická verejnosť a došlo ku komerčnému
-využívaniu informácií, ktoré boli odrazu ľahko dostupné širokej verejnosti. To
-vyvolalo ešte väčší záujem o prístup k internetu aj z prostredia domácnosti a viedlo
-ku dnes už pomerne samozrejnému univerzálnemu prístupu k Internetu ako médiu na
-poskytovanie, zdieľanie a vyhľadávanie informácií.
+JavaScript was a relatively simple language, but for a long time, it suffered from the inconsistency of its implementation in various browsers. This was partly due to the ambiguity of its standard and the reluctance of major players in the market, Microsoft and Mozilla, to adapt and modify their implementations. This led to numerous limitations in creating dynamic content and restricted the full use of the language. Additionally, the interpreted nature of the language and its relatively slow execution on the computing resources of the time led to its use only for very basic dynamics of content and dynamic changes in the visual context. Operations even moderately demanding in terms of computation speed were then performed on the server side.
 
-Pôvodne boli dokumenty plne statické, obsahujúce len text v prirodzenom jazyku a
-pokyny pre spôsob formátovania obsiahnutého textu. K zmene obsahu v prehliadači
-dochádzalo len prechodom na novú stránku po aktivovaní hypertextového odkazu. Táto
-forma interakcie prevažuje na internete dodnes, najmä pri vyhľadávaní a prepájaní
-informačných zdrojov. Vzhľadom na pomerne dlhé sieťové odozvy v počiatkoch vývoja
-Internetu, však táto interakcia bola nedostatočná a neumožňovala efektívne využívať
-možnosti Internetu napríklad pri zbere informácií od používateľov akými sú vypĺňanie
-a validácia formulárov, či riadenie navigácie v závislosti od indikovaných preferencií
-používateľa. Tento problém sa pokúsili adresovať dva konkurenčné návrhy pre zahrnutie
-programovacích makier do obsahu hypertextového dokument. Ako protinávrh na skriptovací
-jazyk založený na jazyku Basic od firmy Microsoft - VBScript, prišla firma Netscape
-s návrhom jazyka JavaScript, dnes oficiálne pomenovaného ako ECMAScript. Tým sa začala
-éra dynamických stránok, v tej dobe označovaných ako DHTML. Štandard
-HTTP potom umožnil zahrnúť do dokumentu časti kódu v ľubovoľnom jazyku, z dlhodobého
-hľadiska sa však presadilo používanie jazyka neoficiálne nazývaného JavaScript.
+Libraries helped overcome the ambiguous implementation of the JavaScript language by unifying the work with document content and data between different browsers. They provided their own programming interface above the standard and dynamically adapted to the language implementation in a given browser. One of the most well-known libraries for this purpose is jQuery.
 
-JavaScript jazyk bol pomerne jednoduchý a dlhý čas trpel najmä na rozdielnosť
-jeho implementácie v rôznych prehliadačoch, k čomu prispievala aj nejednoznačnosť
-jeho štandardu a neochota hlavných hráčov na trhu - Microsoft a Mozilla - prispôsobiť
-a upraviť svoje implementácie. To generovalo množstvo obmedzení pri tvorbe dynamického
-obsahu a obmedzovalo plné využitie jazyka. Zároveň bol jazyk interpretovaný a na
-vtedajších výpočtových prostriedkoch pomerne pomalý, preto sa využíval len na veľmi
-základnú dynamiku obsahu a dynamické zmeny vizuálneho kontextu. Operácie aj relatívne
-mierne náročné na rýchlosť výpočtu sa potom vykonávali na strane servera.
+The browser content competition helped address the second disadvantage, which was the speed of JavaScript language interpretation. While the competition initially took place only between Microsoft's Internet Explorer and the commercially disadvantaged Mozilla Firefox, the entry of the third major player, Google Chrome, and the subsequent revival of the Safari browser from Apple brought new life to this competition. It forced players to invest in the speed of the browser itself. With the advent of mobile platforms, the approach to accessing information also changed, prompting browser manufacturers to better adapt to the standard. Otherwise, they risked the redundancy of their platform in an environment where content providers began to dominate, and where the operating system or type of browser of web content became a commodity.
 
-K prekonaniu nejednoznačnej implementácie jazyka pomohli knižnice, ktoré unifikovali
-prácu s obsahom dokumentu a údajmi medzi rôznymi priehladačmi tým, že poskytli vlastné
-programové rozhranie nad štandardom a dynamicky sa prispôsobili implementácii jazyka
-v danom prehliadači. Asi najznámejšou takouto knižnicou je dodnes používana knižnica
-[_jQuery_][jquery].
-
-Súboj medzi prehliadačmi obsahu pomohol adresovať druhú nevýhodu, ktorou bola rýchlosť
-interpretácie jazyka JavaScript. Zatiaľ, čo spočiatku súťaž prebiehala len medzi Microsoftom
-poskytovaným prehliadačom Internet Explorer a komerčne znevýhodneným prehliadačom
-Mozilla Firefox, bola motivácia na investície do implementácie prehliadača relatívne
-nízka. Vstup tretieho veľkého hráča - Google Chrome - a následné oživenie prehliadača
-Safari od firmy Apple, túto súťaž oživili a donútili hráčov investovať aj do rýchlosti
-samotného prehliadača. Zároveň sa s príchodom mobilných platforiem zmenil aj spôsob
-prístupu k informáciám, čo donútilo výrobcov prehliadačov viac sa prispôsobiť
-štandardu, pokiaľ nechceli riskovať zbytočnosť svojej platformy v prostredí, ktoré
-začali ovládať najmä poskytovatelia obsahu, a v ktorom sa operačný systém alebo
-typ prehliadača webového obsahu stali komoditou.
-
-V súčasnosti sú webové aplikácie vyvíjané najmä pre takzvané moderné
-prehliadače - _Modern Browsers_, ktoré sa vyznačujú striktnejším dodržiavaním štandardu,
-rýchlou adaptáciou na novo vydávané verzie štandardu a vysokým výkonom pri vykonávaní
-inštrukcií jazyka, porovnateľným s výkonom iných manažovaných jazykov, ako sú napríklad
-Java a C#. Tomu zodpovedá aj fakt, že zatiaľ, čo medzi verziou EcmaScript 3 a
-EcmaScript 5 uplynolo desať rokov (1999-2009, verzia 4 nebola nikdy vydaná), v rokoch
-2015 až 2018 vznikli štyri nové verzie a možno očakávať pokračovanie tohto trendu.
+Currently, web applications are primarily developed for so-called modern browsers, which are characterized by strict adherence to standards, rapid adaptation to newly released standard versions, and high performance in executing language instructions, comparable to the performance of other managed languages such as Java and C#. This is reflected in the fact that, while ten years passed between EcmaScript 3 and EcmaScript 5 (1999-2009, version 4 was never released), four new versions were created between 2015 and 2018, and this trend is expected to continue.

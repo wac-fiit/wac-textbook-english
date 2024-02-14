@@ -1,83 +1,13 @@
-## Formy realizácie dynamického obsahu na webe
+## Forms of Implementing Dynamic Content on the Web
 
-Ako bolo uvedené, prvotnou formou interakcie a dynamiky obsahu bola navigácia
-prostredníctvom hypertextových odkazov a načítaním nového dokumentu. Táto forma
-dynamiky je stále základom interakcie používateľa s informáciami na Internete.
-Úlohou vývojového týmu je v tomto prípade vhodne a prehľadne štrukturovať
-informácie a zabezpečiť takú formu navigácie medzi dokumentami, ktorá čo najlepšie
-zodpovedá správaniu sa a kognitívnemu spracovaniu informácií používateľmi.
-Množstvo informácií vyžaduje poskytnutie prehľadu o obsahu portálu - _site maps_
- alebo nasadnie nástrojov na vyhľadávanie informácií.
+As mentioned earlier, the initial form of interaction and content dynamics was navigation through hypertext links and loading new documents. This form of dynamics still forms the basis of user interaction with information on the Internet. The development team's task in this case is to structure the information appropriately and provide a navigation form between documents that best corresponds to the behavior and cognitive processing of information by users. The sheer amount of information requires providing an overview of the portal's content through site maps or deploying tools for information retrieval.
 
-S príchodom JavaScriptu vznikla nová forma interakcie, kedy skript obsiahnutý
-v dokumente alebo referencovaný dokumentom po svojej aktivácii (napríklad
-stlačením tlačidla) modifikoval model dokumentu (_DOM - Document Object Model_).
-Vývojový tím sa v tej dobe rozhodoval, ktoré informácie zahrnúť do dokumentu a zobraziť
-dynamicky, čím sa zredukoval počet dotazov na server, a ktoré informácie poskytnúť
-formou navigácie na nový dokument získaný zo servera. Veľkú časť úsilia pritom bolo
-nutné venovať rozdielom v implementácii jazyka medzi hlavnými prehliadačmi.
+With the advent of JavaScript, a new form of interaction emerged, where a script contained in the document or referenced by the document, upon activation (e.g., button press), modified the Document Object Model (DOM). The development team at that time had to decide which information to include in the document and display dynamically, reducing the number of queries to the server. They also had to decide which information to provide for navigation to a new document obtained from the server. Much effort was required to address the differences in language implementation between major browsers.
 
-Súčasťou kódu skriptu boli aj informácie, ktoré riadili obsah a spôsob modifikácií.
-Tieto doplňujúce informácie sú často závislé od stavu aplikácie alebo od identity
-používateľa. HTTP protokol sa preto doplnil o možnosť špecifikovania a identifikácie
-stavu aplikácie, či už formou parametrov požiadavky (_query parameters_) alebo pomocou
-takzvaných _cookies_, čo sú informácie persistentne uložené v prehliadači a doplnené
-do požiadavky protokolu HTTP. Vygenerovaný dokument potom obsahoval informácie
-v závislosti od stavu aplikácie a používateľa a bol závislý od aplikačnej logiky.
-To viedlo k vzniku jazykov, ktoré kombinovali programovací jazyk používaný na strane
-servera, s kódom dokumentu - HTML a JavaScript - používaným na strane prehliadača.
-Typickými predstaviteľmi týchto jazykov boli _Java Server Pages - JSP_,
-_Active Server Pages - ASP_, alebo jazyk _PHP_. Skutočná zmena obsahu stránky alebo
-jeho obnovenie ale stále vyžadovali navigáciu a načítanie celého dokumentu.
+The script code also included information that controlled the content and the way modifications were made. These additional pieces of information often depended on the application's state or user identity. Therefore, the HTTP protocol was supplemented with the ability to specify and identify the application's state, either in the form of query parameters or using cookies—information persistently stored in the browser and added to the HTTP protocol request. The generated document then contained information based on the application and user's state and was dependent on application logic. This led to the development of languages that combined the server-side programming language with the document code - HTML and JavaScript - used on the browser side. Examples of such languages included Java Server Pages (JSP), Active Server Pages (ASP), or PHP. However, real changes to the page's content or its refresh still required navigation and loading the entire document.
 
-Požiadavka obnoviť len časť obsahu dokumentu bez nutnosti jeho obnovenia, ktoré 
-pôsobilo rušivo, viedla k zavedeniu protokolu _AJAX - Asynchronous JavaScript + XML_,
-dnes označovanom ako _XHR - XML Http Request_. Tento protokol, alebo rozšírenie jazyka,
-umožnil kódu
-JavaScript dynamicky vyvolať a spracovať HTTP požiadavku, ktorej odpoveď bola v
-tej dobe typicky poskytovaná vo forme XML dokumentu. V počiatkoch bol vývoj zameraný
-na oddelenie statického obsahu a dynamického obsahu a začali vznikať prvé webové
-služby a ich štandardy. Tento prístup ale umožnil využiť HTTP a HTML štandardy
-spôsobom dovtedy skôr známym pri vývoji desktopových aplikácií. Načítaný dokument
-obsahoval len vizuálnu formu aplikácie, a obsah - údaje - sa načítali na základe
-aplikačnej logiky pomocou protokolu XHR. Prvé aplikácie tohto druhu ešte stále
-využívali navigáciu k zmene vizuálnej formy aplikácie, ale už pomohli posunúť
-vývoj štandardov pre rozvoj aplikácií, v tej dobe známych ako HTML5+CSS3+JavaScript.
-Možnosť dynamického načítania blokov kódu JavaScript umožnila zmenu vizuálnej formy
-na pozadí, bez nutnosti načítania dokumentu a rušivého obnovenia celej stránky. Vznikli
-prvé knižnice pre vývoj aplikácií na jednej stránke - _Single Page Application_ -
-ako napríklad ExtJS, a postupne vznikli ďalšie knižnice. Medzi najznámejšie z nich
-dnes patria Angular, React, alebo Vue.js. Vývojový tým pri tomto spôsobe vývoja oddeľuje
-časť aplikácie viditeľnej v prehliadači od vývoja webovej služby alebo služieb,
-ktoré poskytujú údaje pre aplikáciu. Interakcia a logika aplikácie je riadená
-z prehliadača, zatiaľ čo webové služby sú primárne vyvíjané ako bezstavové. V súčasnosti
-je tento spôsob vývoja výužívaný pri väčšine nových aplikácií určených pre prehliadače.
+The need to refresh only part of the document's content without the need to reload it, which was disruptive, led to the introduction of the AJAX protocol - Asynchronous JavaScript + XML, now referred to as XHR - XML Http Request. This protocol or language extension allowed JavaScript code to dynamically invoke and process an HTTP request, with the response typically provided in the form of an XML document at that time. In the early days, development focused on separating static content from dynamic content, and the first web services and their standards began to emerge. Although this approach allowed the use of HTTP and HTML standards in a way previously known in desktop application development, loaded documents only contained the visual form of the application. The data was loaded based on application logic using the XHR protocol. The first applications of this kind still used navigation to change the application's visual form but helped advance the development standards for application development, then known as HTML5+CSS3+JavaScript. The ability to dynamically load JavaScript code blocks allowed for a change in the visual form in the background, without the need to load the document and disruptively refresh the entire page. The first libraries for single-page application development, such as ExtJS, were created, followed by others like Angular, React, or Vue.js. In this development approach, the development team separates the part of the application visible in the browser from the development of the web service or services that provide data for the application. Interaction and application logic are controlled from the browser, while web services are primarily developed as stateless. Currently, this development approach is used in most new applications designed for browsers.
 
-Narastajúca komplexnosť takýchto aplikácií ale so sebou prináša aj určité nevýhody.
-Zväčšujúci sa objem kódu so sebou prináša nutnosť zdĺhavého načítavania kódu pred
-tým, než je ho možné reálne začať vykonávať a zobraziť obsah aplikácie používateľovi.
-Zároveň, v porovnaní s desktopovými aplikáciami, je nedostatkom webových aplikácií
-ich závislosť na dostupnosti Internetového pripojenia. Oba tieto nedostatky adresujú
-štandardy označované ako progresívne webové aplikácie - _Progressive Web Applications_.
-Tieto štandardy umožňujú uložiť obsah a kód aplikácie v prehliadači alebo plne načítať
-webovú stránku a údaje z vyrovnávacej pamäte prehliadača, bez potreby aktívneho pripojenia
-k internetu. Zároveň umožnujú lepšiu integráciu s grafickým rozhraním operačného
-systému. Z pohľadu používateľa poskytujú takmer okamžité načítanie stránky a
-obsahu aplikácie, možnosť práce aj pri nedostupnosti pripojenia k Internetu, a
-sú pre neho takmer nerozoznateľné od natívnych aplikácií operačného systému.
-Momentálne sa začínajú tieto druhy aplikácií objavovať a sú využívané v najmodernejších
-verziách používateľsky populárnych aplikácií ako sú sociálne siete. Očakáva sa,
-že tento typ aplikácií začne celkovo prevládať, tiež z dôvodu jeho nezávislosti
-od aktuálneho druhu operačného systému, čo znižuje náklady na strane výrobcu softvéru,
-keďže môže jednou implementáciou adresovať rôzne cieľové platformy. Operačným
-systémom z pohľadu softvérového vývojára sú tu potom štandardy poskytované
-prehliadačom, súhrnne označované ako _Web APIs_, a webové služby dostupné
-prostredníctvom siete Internet.
+The increasing complexity of such applications brings certain disadvantages. The growing codebase requires a lengthy code loading time before it can be executed and display the application's content to the user. Also, compared to desktop applications, a drawback of web applications is their dependency on internet connectivity. Both of these drawbacks are addressed by standards known as Progressive Web Applications (PWAs). These standards allow storing the application's content and code in the browser or fully loading the web page and data from the browser cache, without the need for an active internet connection. They also allow better integration with the graphical interface of the operating system. From the user's perspective, PWAs provide almost instantaneous page and application content loading, the ability to work even without internet connectivity, and are almost indistinguishable from native applications of the operating system. These types of applications are starting to appear and are used in the most modern versions of popular user applications such as social networks. It is expected that this type of application will generally prevail, also due to its independence from the current type of operating system, reducing software development costs since a single implementation can address various target platforms. From the perspective of software development, the operating system is represented by the standards provided by the browser, collectively referred to as Web APIs, and web services available via the internet.
 
-Posledným krokom pre plnú emancipáciu webových aplikácií s desktopovými, je poskytnutie
-štandardu, ktorý by umožnil využívať možnosti výpočtových prostriedkov na úrovni
-blízkej strojovému jazyku. Týmto štandardom je v súčasnosti  rozvíjajúci sa
-_WebAssembly_, ktorý je už dostupný v hlavných prehliadačoch a umožňuje vývoj
-aplikácií, donedávna dostupných len formou natívnych desktopových aplikácií.
-Štandard _WebAssembly_ umožňuje plne využiť výpočtové prostriedky počítača na úrovni
-nemenežovaného kódu.
+The last step towards the full emancipation of web applications compared to desktop ones is providing a standard that allows utilizing the computational resources at a level close to machine language. The emerging standard for this purpose is WebAssembly, which is already available in major browsers and allows the development of applications that until recently were only available in the form of native desktop applications. The WebAssembly standard enables fully utilizing a computer's computational resources at the level of unmanaged code.

@@ -1,3 +1,2 @@
-
-[$landmark-dome> História webových aplikácií](./00-README.md)
-[Formy realizácie dynamického obsahu na webe](./01-dynamics.md)
+[$landmark-dome> History of Web Applications](./00-README.md)
+[Forms of Implementing Dynamic Content on the Web](./01-dynamics.md)
