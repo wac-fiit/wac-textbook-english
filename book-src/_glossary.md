@@ -1,43 +1,42 @@
-##### API 
+##### API
 
-Skratka pre _Application Programmable Interface_
+Abbreviation for _Application Programmable Interface_
 
-##### Aplication Programmable Interface
+##### Application Programmable Interface
 
-Aplikačné rozhranie pre ovládanie pomocou externého programu. Na rozdiel od
-používateľského rozhrania, je toto rozhranie dostupné typicky pre používateľov so
-znalosťami príslušnej technológie alebo programovacieho jazyka. Predpokladá
-inicializáciu parametrov a spracovanie výsledkov technickými prostredkami.
-Dôležitími vlastnosťami API je kvalita dokumentácie, dostupnosť, a prenositeľnosť.
+Application interface for control using an external program. Unlike
+the user interface, this interface is typically available to users with
+knowledge of the relevant technology or programming language. It assumes
+parameter initialization and result processing through technical means.
+Important characteristics of an API include documentation quality, availability, and portability.
 
 ##### Cloud
 
-Termín _Cloud_ je prevzaté slovo, ktoré pôvodne vyjadrovalo ľubovoľné výpočtové
-prostriedky medzi počítačom alebo počítačmi poskytovateľa softvérových služieb,
-na ktorom bežala obslužná časť softvérového systému (server) a počítačom na ktorom
-bežalo používateľské rozhranie (front-end). V technických nákresoch sa pri riešeniach
-typu klient-server táto časť typicky zakresľovala ako mráčik - v angličtine _cloud_,
-a označovala prostriedky sieťovej infraštruktúry Internet. _Cloud_-ové riešenie
-potom znamená, že prostriedky na strane poskytovateľa služby sa presunuly do tohto
-"mráčika", čo v praxi znamená použitie a prenájom výpočtových prostriedkov vo verejnom
-dátovom centre. Samotné označenie ale časom získalo rôzne významy - napríklad
-"_private cloud_", "_my cloud_", a podobne, preto sa v technickom prostredí
-uprednostňuje používanie termínov _verejné dátove stredisko_ - anglicky _public
-data center_ na označenie _cloud_ a termín _vlastné dátové stredisko_ - anglicky
-_on-premise data center_ na označenie prostriedkov vo vlastnej správe.
+The term _Cloud_ is a borrowed word that originally expressed any computational
+resources between a computer or computers of a software service provider,
+where the server part of the software system runs, and a computer on which
+the user interface (front-end) runs. In technical diagrams for client-server solutions,
+this part was typically illustrated as a little cloud, hence the term _cloud_ in English,
+indicating the resources of the Internet network infrastructure. A _cloud_ solution
+means that the resources on the service provider's side have moved into this
+"cloud," which in practice involves using and renting computing resources in a public
+data center. However, over time, the term has acquired various meanings, such as
+"_private cloud_," "_my cloud_," and similar. In the technical environment,
+the use of the term _public data center_ in English is preferred to refer to the _cloud_,
+and the term _on-premise data center_ for resources under personal management.
 
 ##### CORS
 
-Pozri _Cross-Origin Resource Sharing_ 
+See _Cross-Origin Resource Sharing_
 
 ##### Cross-Origin Resource Sharing
 
- CORS popisuje spôsob, kedy sever používa dodatočné hlavičky, ktoré informujú
- internetový prehliadač, že webová aplikácia z jedného servera (_origin_), môže
- pristupovať k vybraným zdrojom z iného servera (_different origin_).
+CORS describes the way a server uses additional headers to inform
+a web application from one server (_origin_) that it can access selected resources
+from another server (_different origin_).
 
-##### Verejné dátové stredisko
+##### Public Data Center
 
-Anglicky _public data center_, pozri tiež _Cloud_. Výpočtové prostriedky poskytované
-treťou stranou a v určitých aspektoch zdieľané medzi rôznymi poskytovateľmi
-softvérových služieb a riešení.
+In English, _public data center_, also see _Cloud_. Computational resources provided
+by a third party and, in certain aspects, shared among different providers
+of software services and solutions.
