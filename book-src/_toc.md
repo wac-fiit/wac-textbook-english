@@ -2,7 +2,7 @@
 
 <hr />
 
-[Sample Application](./ukazkova-aplikacia.md)
+[Sample Application](./sample-application.md)
 
 <hr />
 
