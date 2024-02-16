@@ -10,7 +10,7 @@
 [$cubes> Deployment to Kubernetes Cluster](./060-kubernetes.md)
 [$git-alt> Archiving Infrastructure Configuration](./070-archivacia-gitops-repo.md)
 [$arrows-spin> Continuous Deployment using Flux](./081-flux.md)
-[$arrows-spin> Flux - Monitoring and Applying Changes to Docker Image Version](./082-flux-sledovanie-obrazov.md)
+[$arrows-spin> Flux - Monitoring and Applying Changes to Docker Image Version](./082-flux-image-monitoring.md)
 [edit-square> Editing Items and Navigation in the Application](./090-entry-editor-and-routing.md)
 [api> API Specification Design](./101-openapi.md)
 [api> API for Record Modification](./102-crud-api.md)
