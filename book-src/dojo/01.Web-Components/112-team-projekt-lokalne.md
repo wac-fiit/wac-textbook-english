@@ -1,14 +1,13 @@
-# Nasadenie tímového projektu na lokálnom klastri
+# Deployment of the team project on the local cluster
 
->info:> Táto kapitola je len zhrnutím postupu pre prácu študentov, nebude na cvičeniach preberaná.
+>info:> This chapter is just a summary of the procedure for student work and will not be covered in the exercises.
 
-Súčasťou semestrálneho projektu je jeho nasadenie na spoločnom klastri. Postup je v zásade obdobný ako v prípade aplikácie _<pfx>-ambulance-ufe_.
+As part of the semester project, it needs to be deployed on the shared cluster. The process is essentially similar to the deployment of the _<pfx>-ambulance-ufe_ application.
 
-1. Vytvorte samostatný repozitár pre web komponent Vašej aplikácie, neskôr aj pre webapi Vašej aplikácie a implementujte tieto služby, ako to je ukázané na cvičeniach. Pripravte nové vydanie aplikácie.
+1. Create a separate repository for the web component of your application, later also for the web API of your application, and implement these services as shown in the exercises. Prepare a new release of the application.
 
-2. Vytvorte nový repozitár pre nasadenie - gitops - Vašej aplikácie. Pokiaľ pracujete samostatne, môžete použit aj repozitár `ambulance-gitops` vytvorený na cvičeniach a len ho rozšíriť - doplniť konfigurácie Vašej aplikácie v príslušných adresároch `${WAC_ROOT}/ambulance-gitops/apps`,
-`${WAC_ROOT}/ambulance-gitops/clusters/localhost/install` a `${WAC_ROOT}/ambulance-gitops/clusters/wac-aks/install`. V prípade tímovej práce odporúčame vytvoriť nový repozitár so zdieľaním prístupom členov tímu.
+2. Create a new repository for the deployment - gitops - of your application. If you are working individually, you can use the `ambulance-gitops` repository created in the exercises and just expand it - add configurations for your application in the respective directories `${WAC_ROOT}/ambulance-gitops/apps`, `${WAC_ROOT}/ambulance-gitops/clusters/localhost/install`, and `${WAC_ROOT}/ambulance-gitops/clusters/wac-aks/install`. In the case of team collaboration, we recommend creating a new repository with shared access for team members.
 
-3. Obdobne ako je uvedené v kapitole [Nasadenie aplikácie na produkčný kubernetes klaster](./111-production-deployment), nasaďte Váš projekt do spoločného klastra.
+3. Similarly to the process described in the chapter [Deployment of the application on a production Kubernetes cluster](./111-production-deployment), deploy your project to the shared cluster.
 
->warning:> Spoločný klaster má nastavené striktné pravidlá v hlavičke [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP). Pokiaľ chcete použiť nejaké externé zdroje - napríklad knižnicu dostupnú z CDN - tak prehliadač prístup na takúto adresu zablokuje. Všetky zdroje musia byť preto súčasťou vášho kódu.
+>warning:> The shared cluster has strict rules in the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) header. If you want to use external resources - for example, a library available from CDN - the browser will block access to such an address. Therefore, all resources must be part of your code.

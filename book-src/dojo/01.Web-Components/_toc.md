@@ -17,5 +17,5 @@
 [deployed-code-update> Deployment of the Application to Production Kubernetes Cluster](./111-production-deployment.md)
 [deployed-code-update> Deployment of Team Project on Local Cluster](./112-team-projekt-lokalne.md)
 [pest-control> Debugging the Application in Developer Tools](./120-debugging.md)
-[summarize> Summary](./990-zaver.md)
+[summarize> Summary](./990-conclusion.md)
 

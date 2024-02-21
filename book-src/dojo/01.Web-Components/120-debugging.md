@@ -1,125 +1,118 @@
-# Ladenie aplikácie
+# Debugging the Application
 
 ---
 
 >info:>
-Šablóna pre predvytvorený kontajner ([Detaily tu](../99.Problems-Resolutions/01.development-containers.md)):
+Template for a pre-built container ([Details here](../99.Problems-Resolutions/01.development-containers.md)):
 `registry-1.docker.io/milung/wac-ufe-120`
 
 ---
 
-V tomto kroku si ukážeme, ako ladiť aplikáciu v _Nástrojoch vývojára_.
+In this step, we will demonstrate how to debug the application using the _Developer Tools_.
 
-1. Ladenie aplikácie si odskúšame v rámci pridávania nového pacienta. V súbore
-   `${WAC_ROOT}/ambulance-ufe/src/components/ambulance-wl-editor/ambulance-wl-editor.tsx`
-   upravte funkciu `getWaitingEntryAsync` nasledovne:
+1. We will test debugging by adding a new patient. In the file `${WAC_ROOT}/ambulance-ufe/src/components/ambulance-wl-editor/ambulance-wl-editor.tsx`, modify the getWaitingEntryAsync` function as follows:
 
-   ```tsx
-   private async getWaitingEntryAsync(): Promise<WaitingListEntry> {
-     if (this.entryId === "@new") {
-       this.isValid = false;
-       this.entry = {
-        id: "@new",
-        patientId: "",
-        waitingSince: new Date().toISOString(), @_important_@
-        estimatedDurationMinutes: 15
-       };
-       this.entry.estimatedStart = (await this.assumedEntryDateAsync()).toISOString(); @_add_@
-       return this.entry;
-     }
-   }
-   ```
+```tsx
+private async getWaitingEntryAsync(): Promise<WaitingListEntry> {
+  if (this.entryId === "@new") {
+    this.isValid = false;
+    this.entry = {
+    id: "@new",
+    patientId: "",
+    waitingSince: new Date().toISOString(), @_important_@
+    estimatedDurationMinutes: 15
+    };
+    this.entry.estimatedStart = (await this.assumedEntryDateAsync()).toISOString(); @_add_@
+    return this.entry;
+  }
+}
+```
 
-   Do toho istého súboru pridajte novú funkciu `assumedEntryDateAsync` a ``:
+In the same file, add a new function `assumedEntryDateAsync` and ``:
 
-    ```tsx
-    private async getWaitingEntryAsync(): Promise<WaitingListEntry> {
-      ...
-    }
+```tsx
+private async getWaitingEntryAsync(): Promise<WaitingListEntry> {
+  ...
+}
 
-    private async assumedEntryDateAsync(): Promise<Date> {  @_add_@
-      try {  @_add_@
-        const response = await AmbulanceWaitingListApiFactory(undefined, this.apiBase)  @_add_@
-          .getWaitingListEntries(this.ambulanceId)  @_add_@
-        if (response.status > 299) {  @_add_@
-          return new Date();  @_add_@
-        }  @_add_@
-        const lastPatientOut = response.data  @_add_@
-          .map((_: WaitingListEntry) =>    @_add_@
-              Date.parse(_.estimatedStart)   @_add_@
-              + _.estimatedDurationMinutes * 60 * 1000   @_add_@
-          )  @_add_@
-          .reduce((acc: number, value: number) => Math.max(acc, value), 0);  @_add_@
-        return new Date(Math.min(Date.now(), lastPatientOut));  @_add_@
-      } catch (err: any) {  @_add_@
-        return new Date();  @_add_@
-      }  @_add_@
-   }  @_add_@
-   ```
+private async assumedEntryDateAsync(): Promise<Date> {  @_add_@
+  try {  @_add_@
+    const response = await AmbulanceWaitingListApiFactory(undefined, this.apiBase)  @_add_@
+      .getWaitingListEntries(this.ambulanceId)  @_add_@
+    if (response.status > 299) {  @_add_@
+      return new Date();  @_add_@
+    }  @_add_@
+    const lastPatientOut = response.data  @_add_@
+      .map((_: WaitingListEntry) =>    @_add_@
+          Date.parse(_.estimatedStart)   @_add_@
+          + _.estimatedDurationMinutes * 60 * 1000   @_add_@
+      )  @_add_@
+      .reduce((acc: number, value: number) => Math.max(acc, value), 0);  @_add_@
+    return new Date(Math.min(Date.now(), lastPatientOut));  @_add_@
+  } catch (err: any) {  @_add_@
+    return new Date();  @_add_@
+  }  @_add_@
+}  @_add_@
+```
 
-   Pridajte zobrazenie predpokladaného času vstupu:
+Add the display of the assumed entry time:
 
-    ```tsx
-      render() {
-        return (
-          <Host>
-           ...
-            <md-filled-text-field disabled
-                           label="Čakáte od" 
-                           value={new Date(this.entry?.waitingSince || Date.now()).toLocaleTimeString()}> @_important_@
-                           <md-icon slot="leading-icon">watch_later</md-icon>
-            </md-filled-text-field>
-            <md-filled-text-field disabled @_add_@
-                           label="Predpokladaný čas vyšetrenia"  @_add_@
-                           value={new Date(this.entry?.estimatedStart || Date.now()).toLocaleTimeString()}> @_add_@
-                           <md-icon slot="leading-icon">login</md-icon>  @_add_@
-            </md-filled-text-field> @_add_@
-           ...
-      }
-    ```
+```tsx
+  render() {
+    return (
+      <Host>
+        ...
+        <md-filled-text-field disabled
+                        label="Čakáte od" 
+                        value={new Date(this.entry?.waitingSince || Date.now()).toLocaleTimeString()}> @_important_@
+                        <md-icon slot="leading-icon">watch_later</md-icon>
+        </md-filled-text-field>
+        <md-filled-text-field disabled @_add_@
+                        label="Predpokladaný čas vyšetrenia"  @_add_@
+                        value={new Date(this.entry?.estimatedStart || Date.now()).toLocaleTimeString()}> @_add_@
+                        <md-icon slot="leading-icon">login</md-icon>  @_add_@
+        </md-filled-text-field> @_add_@
+        ...
+  }
+```
 
-   Súbor uložte a pokiaľ nemáte naštartovaný vývojový server, naštartujte ho príkazom
-   `npm run start` a prejdite na stránku [http://localhost:3333/ambulance-wl](http://localhost:3333/ambulance-wl). Stlačte na tlačidlo _'+'_.
-   Na obrazovke vidíte upravený editor.
+Save the file, and if you haven't started the development server, start it with the command `npm run start` and go to the page [http://localhost:3333/ambulance-wl](http://localhost:3333/ambulance-wl). Press the '+' button. On the screen, you will see the modified editor.
 
-2. V súbore `${WAC_ROOT}/ambulance-ufe/api/ambulance-wl.openapi.yaml` sme uviedli v príklade `WaitingListEntriesExample` časy v budúcnosti, predpokladaný čas vstupu očakávame o 11:15 svetového času (UTC). Po započítaní časového pásma by to malo byť `12:15`.Všimnite si, že predpokladaný čas vstupu je ale (takmer) rovnaký ako čas príchodu pacienta.
+2. In the file `${WAC_ROOT}/ambulance-ufe/api/ambulance-wl.openapi.yaml`, we provided future times in the `WaitingListEntriesExample` example. We expect the assumed entry time to be at 11:15 Coordinated Universal Time (UTC). After accounting for the time zone, it should be `12:15`. Notice that the assumed entry time is (almost) the same as the patient's arrival time.
 
-   Pravdepodobne už viete v čom spočíva problém, ale teraz si ukážeme prístup, ako problém odhaliť pomocou ladiacich nástrojov.
+You probably already know what the problem is, but now we will show you an approach to uncovering the problem using debugging tools.
 
-   V prehliadači stlačte tlačidlo _F12_ alebo v menu otvorte položku _Ďalšie nástroje -> Nástroje pre vývojárov_ (aktuálny názov a
-   klávesová skratka sa môžu medzi prehliadačmi líšiť, tu uvádzame postup pre prehliadač [Google Chrome](https://www.google.com/chrome/)).
-   Otvorte záložku `Zdroje`  a v navigačnom paneli otvorte položku `localhost:3333/build/src/components/<pfx>-ambulance-wl-editor/<pfx>-ambulance-wl-editor.tsx`.
-   Vyhľadajte funkciu `assumedEntryDateAsync` a kliknutím na číslo druhého riadku funkcie nastavte bod prerušenia. Implicitne predpokladáme,
-   že výpočet doby vstupu musí byť nesprávny, keďže zobrazovaná hodnota nezodpovedá realite.
+In the browser, press the _F12_ key, or open the _More tools -> Developer tools_ item in the menu (the current name and keyboard shortcut may vary between browsers; here, we provide the procedure for [Google Chrome](https://www.google.com/chrome/)). Open the `Sources` tab and in the navigation panel, open `localhost:3333/build/src/components/<pfx>-ambulance-wl-editor/<pfx>-ambulance-wl-editor.tsx`. Find the `assumedEntryDateAsync` function, and by clicking on the number of the second line of the function, set a breakpoint. By default, we assume that the calculation of the entry time must be incorrect since the displayed value does not correspond to reality.
 
-3. Opätovne načítajte stránku stlačením klávesy _F5_. Prehliadač zastane na bode prerušenia, ktorý sme nastavili v predchádzajúcom bode a v pravom paneli sa zobrazia informácie o stave výpočtu v tomto bode. Postupným stláčaním tlačidla _F10_ odkrokujte program až na posledný riadok bloku `try` v tejto funkcii. Všímajte si, ako sa menia hodnoty v pravom paneli v záložke _Rozsah_ (_Scope_). Pridajte nový výraz sledovania v pravom paneli - stlačte ikonu '+' v riadku _Sledovanie_ (_Watch_): a zadajte výraz `new Date(Date.now()).toISOString()` a následne výraz `new Date(lastPatientOut).toISOString()`. Tieto výrazy reprezentujú hodnoty v čase, keď sa zastavil program na bode prerušenia. Výsledok by mal vyzerať nasledovne: 
+3. Reload the page by pressing the _F5_ key. The browser will stop at the breakpoint we set in the previous step, and information about the state of the calculation at this point will be displayed in the right panel. Step through the program by pressing the _F10_ key until the last line of the `try` block in this function. Notice how the values in the right panel change in the _Scope_ tab. Add a new watch expression in the right panel - press the '+' icon in the _Watch_ section and enter the expression `new Date(Date.now()).toISOString()` and then the expression `new Date(lastPatientOut).toISOString()`. These expressions represent the values at the time when the program stopped at the breakpoint. The result should look like this:
 
-   ![Nastavenie bodu prerušenia](./img/120-01-Debugging.png)
+![Setting a breakpoint](./img/120-01-Debugging.png)
 
-   Porovnajte časy uvedené v zadaných výrazoch - čas v premennej `lastPatientOut` zodpovedá nášmu očakávaniu, chyba musí byť teda inde. Po preskúmaní výrazu `Math.min(Date.Now(), lastPatientOut)` zistíme, že sme omylom použili operátor `min` namiesto operátora `max`.
+Compare the times in the provided expressions - the time in the `lastPatientOut` variable corresponds to our expectation, so the error must be elsewhere. After examining the expression `Math.min(Date.Now(), lastPatientOut)`, we find that we mistakenly used the `min` operator instead of the `max` operator.
 
-   Preskúmajte aj ďalšie prvky rozhrania pre ladenie programu. Navrchu nástroja sú ovládacie prvky pre krokovanie programu. V okne si môžme prezrieť hodnoty jednotlivých premenných, viditeľných v rozsahu bodu prerušenia programu. Tiež vidíme zásobník volaní, pomocou ktorého môžme vyhodnotiť hodnoty premenných v rozsahu nadradenom súčasnému rozsahu.
+Explore other debugging interface elements. At the top of the tool, there are controls for stepping through the program. In the window, you can view the values of individual variables visible in the scope of the program breakpoint. We also see the call stack, which allows us to evaluate variable values in the scope above the current scope.
 
-4. Opravte chybu v súbore `${WAC_ROOT}/ambulance-ufe/src/components/<pfx>-ambulance-wl-editor/<pfx>-ambulance-wl-editor.tsx` - nahraďte operátor `min` operátorom `max` a znovu načítajte stránku. Odstráňte bod prerušenia z programu a overte, že vypočítaná hodnota zodpovedá očakávaniu.
+4. Fix the error in the file `${WAC_ROOT}/ambulance-ufe/src/components/<pfx>-ambulance-wl-editor/<pfx>-ambulance-wl-editor.tsx` - replace the `min` operator with the `max` operator and reload the page. Remove the breakpoint from the program and verify that the calculated value matches our expectation.
 
-5. Nástroje ladenia fungujú v prostredí, kde je k dispozícii ako kompilovaný kód, tak aj zdrojový kód. Táto podmienka nie je splnená v produkčnom nastavení. Aby bolo možné detekovať príčinu prípadných chýb, respektíve zreprodukovať situáciu, ktorá v produkčnom nasadení viedla k vzniku chyby, býva zvykom doplniť kód o záznamy vykonávania programu - tzv. logging. My si ukážeme, ako vypísať cestu, ktorú sa snaží obslúžiť komponent `<pfx>-ambulance-wl-app`. Otvorte súbor `${WAC_ROOT}/ambulance-ufe\src\components\<pfx>-ambulance-wl-app\<pfx>-ambulance-wl-app.tsx` a upravte funkciu `render()`
+5. Debugging tools work in an environment where both compiled and source code are available. This condition is not met in a production setting. To detect the cause of potential errors or to reproduce a situation that led to an error in production, it is common to add execution recording code - logging. We will show you how to print the path that the `<pfx>-ambulance-wl-app` component is trying to handle. Open the file `${WAC_ROOT}/ambulance-ufe\src\components\<pfx>-ambulance-wl-app\<pfx>-ambulance-wl-app.tsx` and modify the `render()` function.
 
-    ```tsx
-    render() {
-      console.debug("<pfx>-ambulance-wl-app.render() - path: %s", this.relativePath);
-      ...
-    ```
+
+```tsx
+render() {
+  console.debug("<pfx>-ambulance-wl-app.render() - path: %s", this.relativePath);
+  ...
+```
   
-   Súbor uložte. Prejdite do prehliadača, v Nástrojoch vývojára zvoľte záložku _Konzola_ a v rozbaľovacom zozname predvolených úrovní zvoľte aj možnosť _Podrobnosti_ - _Debug_. Znovu načítajte stránku. Na výstupe konzoly vidíte výpis funkcie `console.debug()`.
+Save the file. Go to the browser, choose the _Console_ tab in the Developer Tools, and in the drop-down list of default log levels, select the option _Details_ - _Debug_. Reload the page. In the console output, you will see the output of the `console.debug()` function.
 
-   ![Výpis programu do konzoly](./img/120-02-ConsoleLog.png)
+![Console log output](./img/120-02-ConsoleLog.png)
 
-   K dispozícii máme ešte funkcie `console.log()`, `console.information()`, `console.warning()`, a `console.error()`, prípadne môžme použiť niektorú z mnohých knižníc venujúcich sa vytváraniu záznamov z vykonávania programu. V každom prípade treba tieto metódy vhodne používať - príliš časté volanie týchto metód môže zbytočne zneprehľadniť výpis v konzole, použitie logov bez príslušnej informácie o stave programu môže byť neužitočné pre pochopenie príčin zlyhania, posielanie záznamov na server zasa môže zbytočne zaťažiť prenosové pásmo, ktoré má používateľ k dispozícii.
+We also have functions like `console.log()`, `console.info()`, `console.warn()`, and `console.error()`, or we can use one of the many libraries dedicated to creating execution logs. In any case, these methods should be used appropriately - too frequent calls to these methods can unnecessarily clutter the console output, using logs without corresponding information about the program's state can be useless for understanding the causes of failure, and sending logs to the server can unnecessarily burden the user's available bandwidth.
 
-6. Archivujte Vaše zmeny do vzdialeného repozitára.
+6. Archive your changes to the remote repository.
 
-   ```ps
-   git add .
-   git commit -m "Predpokladaný čas vstupu"
-   git push
-   ```
+```ps
+git add .
+git commit -m "Predpokladaný čas vstupu"
+git push
+```
