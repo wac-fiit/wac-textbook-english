@@ -42,4 +42,4 @@ Exercises are continuously updated. They original version contain two versions o
 ![Technologies used in exercises](TechnologyStack_v2.png)
 
 The subject is created and supported by the commercial entity
-[Siemens Healthineers Development Center Slovakia][shsdc], which develops software products in the healthcare sector. The original text was prepared by Milan Unger as the subject lecturer, and the active contributors and co-authors of the new updated content are exercise leaders Peter Cagarda, Ivan Sládečka, and Michal Ševčík.
+[Siemens Healthineers Development Center Slovakia][shsdc], which develops software products in the healthcare sector. The original text was prepared by Milan Unger as the subject lecturer, and the active contributors and co-authors of the new updated content are teacher fellows Peter Cagarda, Ivan Sládečka, and Michal Ševčík.
