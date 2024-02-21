@@ -1,6 +1,6 @@
-# Nasadenie webapi na lokálny klaster
+# Deployment of Web API on Local Cluster
 
----
+--- 
 
 ```ps
 devcontainer templates apply -t registry-1.docker.io/milung/wac-api-080
@@ -8,183 +8,186 @@ devcontainer templates apply -t registry-1.docker.io/milung/wac-api-080
 
 ---
 
-Ďalším krokom je nasadenie pripravených manifestov do lokálneho klastra. Tentokrát využijeme manifesty ktoré sme pripravili v predchádzajúcom cvičení.
+The next step is to deploy the prepared manifests into the local cluster. This time, we will use the manifests prepared in the previous exercise.
 
->info:> Pamätajte, že [konfigurácia aplikácie má byť oddelená od zdrojového kódu aplikácie](https://12factor.net/build-release-run). Manifesty v repozitári `ambulance-webapi` sú preto len odporučeným predpisom, nie súčasťou konfigurácie Vášho systému. V typických prípadoch tento predpis môže byť vhodný, pri iných prípadoch je potrebné ho upraviť. Tento príklad slúži i len ako ukážka možností konfigurácie jednotlivých komponentov s využitím distribuovaných repozítarov.
+>info:> Remember that the [application configuration should be separated from the application source code](https://12factor.net/build-release-run). The manifests in the `ambulance-webapi` repository are therefore only recommended guidelines and not part of your system's configuration. In typical cases, this guideline may be suitable, but in other cases, it may need modification. This example serves only as a demonstration of configuration possibilities for individual components using distributed repositories.
 
-1. Otvorte súbor `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-webapi/kustomization.yaml` a vložte do neho nasledujúci obsah - upravte názov repozitára podľa toho, ako ste ho nazvali:
+1. Open the file `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-webapi/kustomization.yaml` and insert the following content into it - modify the repository name according to how you named it:
 
-   ```yaml
-   apiVersion: kustomize.config.k8s.io/v1beta1
-   kind: Kustomization
 
-   resources:
-   - 'https://github.com/<github-id>/ambulance-webapi//deployments/kustomize/install' # ?ref=v1.0.1
-   ```
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
-   >info:> Dva po sebe idúce znaky `//` oddeľujú URL repozitára od cesty k repozitáru. Pokiaľ by ste chceli získať konkrétnu verziu - git tag allebo commit - pridajte za na koniec URL  `?ref=<tag>`.
+resources:
+- 'https://github.com/<github-id>/ambulance-webapi//deployments/kustomize/install' # ?ref=v1.0.1
+```
 
-2. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/install/patches/ambulance-webapi.service.yaml` s nasledujúcim obsahom:
+>info:> Two consecutive characters `//` separate the repository URL from the repository path. If you want to obtain a specific version - git tag or commit - add `?ref=<tag>` at the end of the URL.
 
-   ```yaml
-   kind: Service
-   apiVersion: v1
-   metadata:
-    name: <pfx>-ambulance-webapi
-   spec:  
-    type: NodePort
-    ports:
-    - name: http
-      protocol: TCP
-      port: 80
-      nodePort: 30081
-   ```
+2. Create the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/install/patches/ambulance-webapi.service.yaml` with the following content:
 
-   Tento súbor upraví definíciu služby tak, aby bola dostupná z lokálnej siete na porte `30081`.
 
-3. Otvorte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/install/kustomization.yaml` a vložte do neho nasledujúci obsah:
+```yaml
+kind: Service
+apiVersion: v1
+metadata:
+name: <pfx>-ambulance-webapi
+spec:  
+type: NodePort
+ports:
+- name: http
+  protocol: TCP
+  port: 80
+  nodePort: 30081
+```
 
-   ```yaml
-    apiVersion: kustomize.config.k8s.io/v1beta1
-    kind: Kustomization
+This file will modify the service definition to make it accessible from the local network on port `30081`.
+
+3. Open the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/install/kustomization.yaml` and insert the following content into it:
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+...
+
+resources:
+- ../../../apps/<pfx>-ambulance-ufe
+- ../../../apps/<pfx>-ambulance-webapi @_add_@
+
+components: 
+- ../../../components/version-developers
+- https://github.com/<github-id>/ambulance-webapi//deployments/kustomize/components/mongodb @_add_@
+
+patches: @_add_@
+- path: patches/ambulance-webapi.service.yaml @_add_@
+```
+
+Because in our local cluster, we have only one service using [MongoDB], we directly apply the manifests from the `ambulance-gitops` repository. In a shared cluster or if there are multiple services using [MongoDB], we will proceed differently, and the manifests in the `ambulance-webapi` repository will serve as an example configuration.
+
+4. Open the file `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-ufe/webcomponent.yaml` and modify the `api-base` attribute:
+
+```yaml
+...
+spec:   
+  ...
+  navigation:
+    - element: pfx-ambulance-wl-app    
     ...
+      attributes:
+        - name: api-base
+          value: http://localhost:30081/api @_add_@
+        ...
+```
 
-    resources:
-    - ../../../apps/<pfx>-ambulance-ufe
-    - ../../../apps/<pfx>-ambulance-webapi @_add_@
+By this, we have informed our micro frontend to communicate with the web API on port `30081`.
 
-    components: 
-    - ../../../components/version-developers
-    - https://github.com/<github-id>/ambulance-webapi//deployments/kustomize/components/mongodb @_add_@
+5. In this step, we will prepare manifests for container registry monitoring. Create the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/gitops/ambulance-webapi.image-repository.yaml`:
 
-    patches: @_add_@
-    - path: patches/ambulance-webapi.service.yaml @_add_@
-   ```
+```yaml
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: ambulance-webapi
+  namespace: wac-hospital
+spec:
+  image: <docker-id>/ambulance-wl-webapi
+  interval: 1m0s
+```
 
-   Pretože v našom lokálnom klastri máme len jednu službu využívajúcu [MongoDB], aplikuje priamo manifesty uvedené v repozítary `ambulance-gitops`. Pri spoločnom klastri, alebo v prípade viacerých služieb využívajúcich [MongoDB] budeme postupovať odlišne, a manifesty v repozitári  `ambulance-webapi` nám poslúžia len ako príklad konfigurácie.
+Next, create the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/gitops/ambulance-webapi.image-policy.yaml`:
 
-4. Otvorte súbor `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-ufe/webcomponent.yaml` a upravte atribút `api-base`:
+```yaml
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImagePolicy
+metadata:
+  name: ambulance-webapi
+  namespace: wac-hospital
+spec:
+  imageRepositoryRef:
+    name: ambulance-webapi # referuje ImageRepository z predchádzajúceho kroku 
+  filterTags:
+    pattern: "main.*" # vyberie všetky verzie, ktoré začínajú na main- (napr. main-20240315.1200)
+  policy:
+    alphabetical:
+      order: asc
+```
 
-   ```yaml
-   ...
-   spec:   
-     ...
-     navigation:
-       - element: pfx-ambulance-wl-app    
-       ...
-         attributes:
-           - name: api-base
-             value: http://localhost:30081/api @_add_@
-           ...
-   ```
+Modify the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/gitops/kustomization.yaml`:
 
-   Týmto sme nášmu mikro frontendu povedali, že má komunikovať s webapi na porte `30081`.
+```yaml
+...
+resources:
+..
+- ambulance-ufe.image-repository.yaml
+- ambulance-ufe.image-policy.yaml
+- ambulance-webapi.image-repository.yaml @_add_@
+- ambulance-webapi.image-policy.yaml @_add_@
+...
+```
 
-5. V tomto kroku pripravíme manifesty pre sledovanie zmien v registry kontainerov. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/gitops/ambulance-webapi.image-repository.yaml`:
+And finally modify the file `${WAC_ROOT}/ambulance-gitops/components/version-developers/kustomization.yaml`:
 
-   ```yaml
-   apiVersion: image.toolkit.fluxcd.io/v1beta2
-   kind: ImageRepository
-   metadata:
-     name: ambulance-webapi
-     namespace: wac-hospital
-   spec:
-     image: <docker-id>/ambulance-wl-webapi
-     interval: 1m0s
-   ```
+```yaml
+images:
+- name: <docker-id>/ambulance-wl-webapi @_add_@
+  newName: <docker-id>/ambulance-wl-webapi # {"$imagepolicy":  "wac-hospital:ambulance-webapi:name"} @_add_@
+  newTag: main # {"$imagepolicy": "wac-hospital:ambulance-webapi:tag"} @_add_@
 
-   Ďalej vytvorte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/gitops/ambulance-webapi.image-policy.yaml`:
+...
+```
 
-   ```yaml
-   apiVersion: image.toolkit.fluxcd.io/v1beta1
-   kind: ImagePolicy
-   metadata:
-     name: ambulance-webapi
-     namespace: wac-hospital
-   spec:
-     imageRepositoryRef:
-       name: ambulance-webapi # referuje ImageRepository z predchádzajúceho kroku 
-     filterTags:
-       pattern: "main.*" # vyberie všetky verzie, ktoré začínajú na main- (napr. main-20240315.1200)
-     policy:
-       alphabetical:
-         order: asc
-   ```
+6. Open command line in `${WAC_ROOT}/ambulance-gitops` and validate the configuration using:
 
-   Upravte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/gitops/kustomization.yaml`:
+```ps
+kubectl kustomize clusters/localhost/install
+```
 
-   ```yaml
-   ...
-   resources:
-   ..
-   - ambulance-ufe.image-repository.yaml
-   - ambulance-ufe.image-policy.yaml
-   - ambulance-webapi.image-repository.yaml @_add_@
-   - ambulance-webapi.image-policy.yaml @_add_@
-   ...
-   ```
+The output should be the manifests without any error messages.
 
-   a nakoniec upravte súbor `${WAC_ROOT}/ambulance-gitops/components/version-developers/kustomization.yaml`:
+7. Archive your changes.
 
-   ```yaml
-   images:
-   - name: <docker-id>/ambulance-wl-webapi @_add_@
-     newName: <docker-id>/ambulance-wl-webapi # {"$imagepolicy":  "wac-hospital:ambulance-webapi:name"} @_add_@
-     newTag: main # {"$imagepolicy": "wac-hospital:ambulance-webapi:tag"} @_add_@
-  
-   ...
-   ```
+```ps
+git add .
+git commit -m 'added webapi to localhost cluster'
+git push
+```
 
-6. Otvorte okno príkazového riadku v adresári `${WAC_ROOT}/ambulance-gitops` a overte správnosť konfigurácie príkazom:
+Make sure your changes were applied by flux on the cluster:
 
-   ```ps
-   kubectl kustomize clusters/localhost/install
-   ```
+```ps
+kubectl get pods  -n wac
+```
 
-   Výstupom by mali byť manifesty pre nasadenie aplikácie bez chybovej správy.
+8. Currently, our frontend is secured so that it allows requests to be loaded only from the same host. In order to be able to access the API on a different port, we have to modify the server's CSP header. Add patch for CSP header configuration to our local cluster. In the `clusters/localhost/prepare/kustomization.yaml` file, add the following lines:
 
-7. Uložte zmeny do git repozitára a odovzdajte ich do vzdialeného repozitára.
+```yaml
+  apiVersion: kustomize.config.k8s.io/v1beta1
+  kind: Kustomization
+  resources:
+  ...
+  patches: 
+  ...
+  - patch: |- @_add_@
+      - op: add @_add_@
+        path: "/spec/template/spec/containers/0/env/-" @_add_@
+        value: @_add_@
+          name: "HTTP_CSP_HEADER" @_add_@
+          value: "default-src 'self' 'unsafe-inline' https://fonts.googleapis.com/ https://fonts.gstatic.com/; font-src 'self' https://fonts.googleapis.com/ https://fonts.gstatic.com/; script-src 'nonce-{NONCE_VALUE}'; connect-src 'self' localhost:30331 localhost:30081" @_add_@
+    target: @_add_@
+      group: apps @_add_@
+      version: v1 @_add_@
+      kind: Deployment @_add_@
+      name: ufe-controller @_add_@
+  components:
+  ...
+```
 
-   ```ps
-   git add .
-   git commit -m 'added webapi to localhost cluster'
-   git push
-   ```
+This file modifies the deployment definition so that it is created with a CSP header that allows access to the local API on port `30081`.
 
-   Overte, že sú Vaše zmeny aplikované v klastri príkazom:
-
-   ```ps
-    kubectl get pods  -n wac
-    ```
-
-8. Momentálne je náš frontend zabezpečený tak že dovoluje načítavať requesty iba z rovnakého hosta. Aby sme mohli pristupovat na lokane API na inom porte musime upravit CSP hlavičku servera. Pridajte patch pre configuraciu CSP hlavičky do nášho lokálneho klastra. V súbore `clusters/localhost/prepare/kustomization.yaml` pridajte nasledovné riadky:
-
-  ```yaml
-    apiVersion: kustomize.config.k8s.io/v1beta1
-    kind: Kustomization
-    resources:
-    ...
-    patches: 
-    ...
-    - patch: |- @_add_@
-        - op: add @_add_@
-          path: "/spec/template/spec/containers/0/env/-" @_add_@
-          value: @_add_@
-            name: "HTTP_CSP_HEADER" @_add_@
-            value: "default-src 'self' 'unsafe-inline' https://fonts.googleapis.com/ https://fonts.gstatic.com/; font-src 'self' https://fonts.googleapis.com/ https://fonts.gstatic.com/; script-src 'nonce-{NONCE_VALUE}'; connect-src 'self' localhost:30331 localhost:30081" @_add_@
-      target: @_add_@
-        group: apps @_add_@
-        version: v1 @_add_@
-        kind: Deployment @_add_@
-        name: ufe-controller @_add_@
-    components:
-    ...
-  ```
-
-   Tento súbor upraví definíciu deploymentu tak, aby bol vytvorený s CSP hlavičkou, ktorá umožní prístup na lokálne API na porte `30081`.
-
-9. V prehliadači otvorte stránku [http://localhost:30331](http://localhost:30331), na ktorej uvidíte aplikačnú obálku s integrovanou mikro aplikáciou. Mikro aplikácia sa pokúsi načítať dáta z webapi, ktoré však zatiaľ neexistujú. Vytvorte ich pomocou zobrazeného rozhrania. Skuste reštartovať Váš klaster a overte, že dáta sú stále dostupné.
+9. In the browser, open the page [http://localhost:30331](http://localhost:30331), where you will see an application envelope with an integrated micro application. The micro app will try to load the data from the webapi, but it doesn't exist yet. Create them using the displayed interface. Try restarting your cluster and verify that the data is still available.
 
 <hr/>
 
-Týmto krokom máme front-end aj webapi nasadené v lokálnom klastri. Nevýhodou tohto nasadenia je, že tieto služby sú dostupné na rôznych portoch, čo z pohľadu prehliadača je považované za rôzne inštancie servera. Navyše by tento prístup bol problematický pri nasadení na verejne URL, pretože väčšina sietí implicitne blokuje HTTP prístup na porty mimo portov 80 a 443. V ďalšej časti si vysvetlíme ako tento problém vyriešiť a zostaviť z jednotlivých mikroslužieb takzvaný [Service Mesh], ktorý vo výsledku bude tvoriť jeden konzistentný celok aj z pohľadu používateľa.
+With this step, we have both front-end and webapi deployed in the local cluster. The disadvantage of this deployment is that these services are available on different ports, which from the browser's point of view are considered different instances of the server. Moreover, this approach would be problematic when deployed on a public URL, because most networks implicitly block HTTP access to ports other than ports 80 and 443. In the next part, we will explain how to solve this problem and build a so-called [Service Mesh] from individual microservices, which as a result it will form one consistent whole even from the user's point of view.
+

@@ -1,58 +1,52 @@
-# Cvičenie 2: Vytvorenie webovej služby s použitím jazyka Go
+# Exercise 2: Creating a web service using the Go language
 
-## <a name="ciel"></a>Cieľ cvičenia
+## <a name="goal"></a>Exercise Goal
 
-Cieľom cvičenia je vytvoriť webovú RESTful službu pre aplikáciu správy čakárne popísanú
-v predchádzajúcom cvičení. Základná funkcionalita:
+The goal of the exercise is to create a web RESTful service for the waiting room management application described
+in the previous exercise. Basic functionality:
 
-* Aplikáciu používajú dvaja užívatelia: Pacient a Ambulantná sestra
-* Pacient
-  * Ako pacient chcem, aby som po príchode do čakárne zadal svoje rodné číslo (alebo číslo pacienta)
-  a aby ma následne systém zaradil do poradia čakajúcich. Chcem, aby mi systém oznámil moje poradie a
-  orientačnú dobu, kedy budem vyšetrený.
-  * Ako pacient s akútnym ochorením - úraz, vysoká teplota, tehotenstvo - a nárokom
-  na prednostné ošetrenie chcem, aby som po príchode do čakárne zadal svoje rodné
-  čislo (alebo číslo pacienta) a aby ma následne systém zaradil do zoznamu čakajúcich s prednostným ošetrením.
-  * Ako pacient čakajúci v ambulancii chcem mať vizuálny prehľad o aktuálnom stave
-  môjho poradia.
-* Ambulantná sestra
-  * Ako sestra ambulancie chcem mať prehľad o počte a identite čakajúcich pacientov
-  a ďalšom pacientovi v poradí.
-  * Ako sestra ambulancie chcem vedieť koľko a ktorí pacienti čakajú na lekárske
-  vyšetrenie, ktorí čakajú na prednostné ošetrenie, a ktorí čakajú na vybavenie
-  administratívneho úkonu.
-  * Ako sestra ambulancie, v prípade posúdenia vážneho stavu pacienta, chcem
-  mať možnosť zmeniť poradie čakajúcich.
+* The application has two users: Patient and Clinic Nurse
+* Patient
+  * As a patient, I want to enter my personal identification number (or patient number) upon arrival at the waiting room
+  and have the system queue me and inform me of my position and an approximate time for my examination.
+  * As a patient with an acute illness - injury, high temperature, pregnancy - and eligibility for priority treatment,
+  I want to enter my personal identification number (or patient number) upon arrival at the waiting room and have the system
+  queue me in a list with priority treatment.
+  * As a patient waiting in the clinic, I want to have a visual overview of my current queue position.
+* Clinic Nurse
+  * As a clinic nurse, I want an overview of the number and identity of waiting patients and the next patient in line.
+  * As a clinic nurse, I want to know how many and which patients are waiting for medical examination, waiting for priority treatment,
+  and waiting for administrative tasks to be processed.
+  * As a clinic nurse, in the case of assessing a serious patient condition, I want the ability to change the queue order.
 
-Navyše sú určení ďalší užívatelia: "Správca nemocnice" a "Vývojár aplikácie".
-Funkcionalita aplikácie je definovaná nasledovne:
+In addition, there are other users: "Hospital Administrator" and "Application Developer."
+Application functionality is defined as follows:
 
-* Správca nemocnice (_nebudeme implementovať počas cvičenia_)
-  * Ako správca nemocnice chcem získať výpis všetkých ambulancií v nemocnici,
-    súčasný počet čakajúcich pri každej ambulancii, ako aj priemernú dobu čakania
-    za obdobie posledných desať dní.
-  * Ako správca nemocnice chcem vytvoriť novú ambulanciu.
-  * Ako správca nemocnice chcem byť schopný nastaviť základné parametre ambulancie,
-    ako jej názov, číslo dverí, ošetrujúcich lekárov, otváracie hodiny a podobne.
-* Vývojár aplikácie
-  * Ako vývojár softvérového systému chcem vedieť, akú funkcionalitu mi webová služba
-  poskytuje a aké parametre požaduje, respektíve aké návratové hodnoty mám očakávať.
-  * Ako vývojár aplikácie chcem mať možnosť jednoduchým spôsobom vyskúšať a overiť
-  funkcionalitu webovej služby.
+* Hospital Administrator (_will not be implemented during the exercise_)
+  * As a hospital administrator, I want to get a list of all clinics in the hospital,
+    the current number of waiting patients at each clinic, and the average waiting time
+    over the last ten days.
+  * As a hospital administrator, I want to create a new clinic.
+  * As a hospital administrator, I want to be able to set basic clinic parameters,
+    such as its name, door number, attending doctors, opening hours, and so on.
+* Application Developer
+  * As a software system developer, I want to know what functionality the web service
+  provides and what parameters it requires, or what return values I can expect.
+  * As an application developer, I want the ability to easily test and verify
+  the functionality of the web service.
 
-Technické ohraničenia:
+Technical constraints:
 
-* Aplikácia je vytvorená v jazyku [Go]
-  s použitím [Gin Web Framework][gin]
-* Aplikačné rozhranie je popísané vo formáte [OpenAPI]
-* Stav čakajúcich a informácie o pacientoch sú uložené v  No-SQL databáze
-  ku ktorej budeme pristupovať pomocou knižnice [MongoDB]
+* The application is created in the [Go] language using the [Gin Web Framework][gin].
+* The application interface is described in [OpenAPI] format.
+* The waiting queue status and patient information are stored in a No-SQL database,
+  which will be accessed using the [MongoDB] library.
 
-## <a name="priprava"></a>Príprava na cvičenie
+## <a name="preparation"></a>Preparation for Exercise
 
-* Vytvorená aplikácia podľa pokynov v cvičení
-  [_Web aplikácia pomocou knižnice Stencil JS_](../01.Web-Components/000-README.md)
-* Nainštalovaný programovací jazyk [Go](https://go.dev/doc/install)
-* Nainštalovanú aplikáciu [Postman]
-* Zoznámenie sa s jazykom Go, napr. [GOLANGBOT.COM](https://golangbot.com/learn-golang-series/)
-* Zoznámenie sa s jazykom [YAML](https://yaml.org/)
+* Created the application according to the instructions in the exercise
+  [_Web application using the Stencil JS library_](../01.Web-Components/000-README.md)
+* Installed the Go programming language [Go](https://go.dev/doc/install)
+* Installed the [Postman] application.
+* Familiarized yourself with the Go language, e.g., [GOLANGBOT.COM](https://golangbot.com/learn-golang-series/)
+* Familiarized yourself with the [YAML] language (https://yaml.org/)
