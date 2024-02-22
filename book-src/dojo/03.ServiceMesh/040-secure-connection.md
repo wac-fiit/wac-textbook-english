@@ -1,4 +1,4 @@
-# Bezpečné pripojenie k aplikácii protokolom HTTPS
+# Secure Connection to the Application via HTTPS
 
 ---
 
@@ -8,93 +8,93 @@ devcontainer templates apply -t registry-1.docker.io/milung/wac-mesh-040
 
 ---
 
-Naša aplikácia je teraz dostupná na porte 80 (HTTP) a javí sa ako jeden aplikačný server. [HTTP protocol] však sám o sebe prenáša všetky údaje v textovej podobe a v nezabezpečenom formáte, čo môže spôsobiť únik informácii na verejných sieťach. Navyše, k našej aplikácii môže pristupovať hociktorá osoba, čo nemusí byť vždy žiadúce, napríklad môžeme chcieť obmedziť prístup k inštancii mongo express, alebo umožniť len prístup pre registrovaných pacientov. V tejto časti si ukážeme ako zabezpečiť prístup k našej aplikácii pomocou [TLS](https://developer.mozilla.org/en-US/docs/Web/Security/Transport_Layer_Security), v ďaľšej časti sa potom budeme zaoberať autentifikáciou a autorizáciou požiadaviek.
+Our application is now available on port 80 (HTTP) and appears as a single application server. However, the [HTTP protocol] itself transfers all data in plain text and in an insecure format, which can lead to information leakage on public networks. Additionally, anyone can access our application, which may not always be desirable; for example, we might want to restrict access to the mongo express instance or allow access only for registered patients. In this section, we will demonstrate how to secure access to our application using [TLS](https://developer.mozilla.org/en-US/docs/Web/Security/Transport_Layer_Security). In the next section, we will address request authentication and authorization.
 
-Pre vytvorenie bezpečného pripojenia k našej aplikácii potrebujeme vytvoriť TLS certifikát pomocou infraštruktúry PKI, a nasadiť ho do nášho kubernetes klastra. Aby bol cartifikát akceptovaný klientom, musí byť vydaný, respektíve overený, známou certifikačnou autoritou, ktorej klient dôveruje. Prehliadač má vopred nastavené certifikačné autority, ktorým dôveruje, a ktoré sú schopné overiť platnosť certifikátu, prípadne môžeme doplniť vlastné certifikačné autority.
+To establish a secure connection to our application, we need to create a TLS certificate using a PKI infrastructure and deploy it into our Kubernetes cluster. For a certificate to be accepted by the client, it must be issued or verified by a recognized certification authority that the client trusts. Browsers have pre-configured certification authorities that they trust and can use to verify the validity of a certificate, or we can add our own certification authorities.
 
-V prípade verejných serverov môžeme využiť niektoré verejne dostupné certifikačné autority, ktoré vydávajú certifikáty zadarmo, napríklad [Let's Encrypt](https://letsencrypt.org/). Jej použitie však vyžaduje použitie verejnej domény, ktorú však v rámci tohto cvičenia nemáme k dispozícii. Preto budeme na lokálny vývoj používať takzvaný [_self-signed certificate_](https://en.wikipedia.org/wiki/Self-signed_certificate) a prehliadaču následne povieme, aby mu dôveroval. V prípade verejných serverov je však použitie _self-signed certificate_ nebezpečné, pretože klient nemá možnosť overiť platnosť certifikátu. Pripravíme si preto aj infraštruktúru pre použitie služby [Let's Encrypt](https://letsencrypt.org/).
+For public servers, we can use some publicly available certification authorities that issue certificates for free, such as [Let's Encrypt](https://letsencrypt.org/). However, using it requires a public domain, which we don't have for this exercise. Therefore, for local development, we will use a so-called [_self-signed certificate_](https://en.wikipedia.org/wiki/Self-signed_certificate), and we will instruct the browser to trust it. However, using a _self-signed certificate_ for public servers is risky because the client cannot verify the certificate's validity. Therefore, we will also set up infrastructure to use the [Let's Encrypt](https://letsencrypt.org/) service.
 
-Za účelom vydávania certifikátov nasadíme do klastra službu [cert-manager]. Cert-manager podporuje niekoľko vlastných objektov, v našom prípade budeme využívať najme objekty typu [_Issuer_](https://cert-manager.io/docs/concepts/issuer/) a nepriamo objekt typu [_Certificate_](https://cert-manager.io/docs/concepts/certificate/), ktorý bude za nás vytvárať _cert-manager_ na základe anotácii umietnených na našom objekte [_Gateway_](https://cert-manager.io/docs/usage/gateway/)
+To issue certificates, we will deploy the [cert-manager] service into the cluster. Cert-manager supports several custom objects; in our case, we will mainly use objects of type [_Issuer_](https://cert-manager.io/docs/concepts/issuer/) and indirectly objects of type [_Certificate_](https://cert-manager.io/docs/concepts/certificate/). The latter will be created by _cert-manager_ based on annotations placed on our [_Gateway_](https://cert-manager.io/docs/usage/gateway/) object.
 
-1. Vytvorte priečinok `${WAC_ROOT}/ambulance-gitops/infrastructure/cert-manager` a v ňom súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/cert-manager/development.issuer.yaml` s obsahom:
+1. Create a folder `${WAC_ROOT}/ambulance-gitops/infrastructure/cert-manager` and within it, create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/cert-manager/development.issuer.yaml` with the following content:
 
-    ```yaml
-    apiVersion: cert-manager.io/v1
-    kind: Issuer
-    metadata:
-      name: development-issuer
-      namespace: wac-hospital
-    spec:
-      selfSigned: {} @_important_@
-    ```
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: development-issuer
+  namespace: wac-hospital
+spec:
+  selfSigned: {} @_important_@
+```
 
-    Týmto sme vytvorili autoritu ktorá bude vydávať certifikáty pre naše lokálne vývojové prostredie. Táketo certifikáty sú vo všeobecnosti nebezpečné, pretože klient nemá možnosť overiť ich platnosť. Pre lokálne vývojové prostredie je to však postačujúce.
+By doing this, we have created an authority that will issue certificates for our local development environment. Such certificates are generally unsafe because the client cannot verify their validity. However, for a local development environment, this is sufficient.
 
-    >info:> Pokiaľ chcete vytvoriť vlastnú autoritu pre vydávanie certifikátov, napríklad pre potreby vývojového klastra, alebo oddelenie, pozrite napríklad tento jednoduchý [návod](https://cert-manager.io/docs/configuration/selfsigned/#bootstrapping-ca-issuers).
+>info:> If you want to create your own authority for issuing certificates, for example, for a development cluster or a specific department, you can refer to this simple [guide](https://cert-manager.io/docs/configuration/selfsigned/#bootstrapping-ca-issuers).
 
-2. Ďalej vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/cert-manager/lets-encrypt.issuer.yaml`
+2. Next, create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/cert-manager/lets-encrypt.issuer.yaml`.
 
-   ```yaml
-   apiVersion: cert-manager.io/v1
-   kind: Issuer
-   metadata:
-     name: letsencrypt-issuer
-     namespace: default
-   spec:
-     acme:
-       email: <your-email>
-       server: https://acme-staging-v02.api.letsencrypt.org/directory  # Use this for testing
-       privateKeySecretRef:
-         name: letsencrypt-issuer-account-key
-       solvers:
-         - http01:
-             gatewayHTTPRoute:
-               parentRefs:
-                 - name: wac-hospital-gateway
-                   namespace: wac-hospital
-                   kind: Gateway
-   ```
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: letsencrypt-issuer
+  namespace: default
+spec:
+  acme:
+    email: <your-email>
+    server: https://acme-staging-v02.api.letsencrypt.org/directory  # Use this for testing
+    privateKeySecretRef:
+      name: letsencrypt-issuer-account-key
+    solvers:
+      - http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - name: wac-hospital-gateway
+                namespace: wac-hospital
+                kind: Gateway
+```
 
-   V tomto cvičení tohto vydavateľa certifikátov síce nepoužijeme, slúži najmä ako ukážka pre Vaše budúce použitie. V prípade, že by ste chceli použiť tento vydavateľ certifikátov, musíte zameniť emailovú adresu za Vašu vlastnú. Taktiež je potrebné zmeniť `server` na `https://acme-v02.api.letsencrypt.org/directory` pre produkčné prostredie. Premenná `privateKeySecretRef` určuje názov _Secret_-u, ktorý _cert-manager_ vygeneruje automaticky. Pre viac informácií pozrite [dokumentáciu](https://cert-manager.io/docs/configuration/acme/).
+In this exercise, we won't use this certificate issuer; it serves mainly as an example for your future use. If you decide to use this certificate issuer, you need to replace the email address with your own. Also, it's necessary to change `server` to `https://acme-v02.api.letsencrypt.org/directory` for a production environment. The variable `privateKeySecretRef` specifies the name of the automatically generated _Secret_ that _cert-manager_ will create. For more information, refer to the [documentation](https://cert-manager.io/docs/configuration/acme/).
 
-3. Teraz vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/cert-manager/kustomization.yaml`
+3. Now, create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/cert-manager/kustomization.yaml`.
 
-   ```yaml
-   apiVersion: kustomize.config.k8s.io/v1beta1
-   kind: Kustomization
-   
-   resources:
-   # check the version is up-to-date
-   - https://github.com/cert-manager/cert-manager/releases/download/v1.13.1/cert-manager.yaml
-   - development.issuer.yaml
-   - lets-encrypt.issuer.yaml
-   
-   patches:
-   - patch: |-
-      - op: add
-        path: /spec/template/spec/containers/0/args/-
-        value: --feature-gates=ExperimentalGatewayAPISupport=true @_important_@
-     target:
-       kind: Deployment
-       name: cert-manager
-       namespace: cert-manager
-   ```
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
-    V tomto súbore sme vytvorili konfiguráciu pre _cert-manager_ a pridali sme do nej dva objekty typu _Issuers_. Navyše sme pridali aj patch, ktorý povolí experimentálnu podporu pre [_Gateway API_][gatewayapi].
+resources:
+# check the version is up-to-date
+- https://github.com/cert-manager/cert-manager/releases/download/v1.13.1/cert-manager.yaml
+- development.issuer.yaml
+- lets-encrypt.issuer.yaml
 
-4. Pridáme _cert_manager_ do nášho klastra. Upravte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/prepare/kustomization.yaml`:
+patches:
+- patch: |-
+  - op: add
+    path: /spec/template/spec/containers/0/args/-
+    value: --feature-gates=ExperimentalGatewayAPISupport=true @_important_@
+  target:
+    kind: Deployment
+    name: cert-manager
+    namespace: cert-manager
+```
 
-   ```yaml
-   ... 
-   resources:
-   ...
-   - ../../../infrastructure/cert-manager @_add_@
-     
-   patches: 
-   ...
-   ```
+In this file, we've created configuration for _cert-manager_ and added two objects of type _Issuers_. Additionally, we've included a patch that enables experimental support for the [_Gateway API_][gatewayapi].
 
-5. Upravíme konfiguráciu pre objekt `wac-hospital-gateway`. Upravte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/envoy-gateway/gateway.yaml`:
+4. Let's add _cert-manager_ to our cluster. Modify the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/prepare/kustomization.yaml`:
+
+```yaml
+... 
+resources:
+...
+- ../../../infrastructure/cert-manager @_add_@
+  
+patches: 
+...
+```
+
+5. Modify the configuration for the `wac-hospital-gateway` object. Edit the file `${WAC_ROOT}/ambulance-gitops/infrastructure/envoy-gateway/gateway.yaml`:
 
 ```yaml
   ...
@@ -135,32 +135,32 @@ Za účelom vydávania certifikátov nasadíme do klastra službu [cert-manager]
           name: wac-hospital-tls     @_add_@
 ```
 
-   Pomocou bloku anotácií informujeme _cert-manager_ o tom, že má vytvoriť certifikát pre doménu `wac-hospital.loc` a pre doménu `localhost`. V prípade produkčného klastra by sme museli zmeniť vydavateľa certifikátov na `letsencrypt-issuer` a zmeniť emailovú adresu, ako aj zmeniť doménu na verejne dostupnú doénu. Doménu `wac-hospital.loc` využijeme v ďaľšej časti, kedy bude potrebná pre správnu komunikáciu s [OpenID] poskytovateľom.
+Using a block of annotations, we inform _cert-manager_ to create a certificate for the domain `wac-hospital.loc` and for the domain `localhost`. In the case of a production cluster, we would need to change the certificate issuer to `letsencrypt-issuer` and modify the email address, as well as change the domain to a publicly accessible one. We will use the domain `wac-hospital.loc` in the next section, where it will be required for proper communication with the [OpenID] provider.
 
-6. Overte správnosť konfigurácie príkazom v priečinku `${WAC_ROOT}/ambulance-gitops`
+6. Verify the correctness of the configuration with the command in the directory `${WAC_ROOT}/ambulance-gitops`.
 
-   ```ps
-   kubectl kustomize clusters/localhost/prepare
-   ```
+```ps
+kubectl kustomize clusters/localhost/prepare
+```
 
-   a následne archivujte a odovzdajte kód do vzdialeného repozitára.
+and then archive and submit the code to the remote repository.
 
-   ```ps
-   git add .
-   git commit -m "Added cert-manager and TLS listener"
-   git push
-   ```
+```ps
+git add .
+git commit -m "Added cert-manager and TLS listener"
+git push
+```
 
-   Overte, že boli naše zmeny úspešne nasadené príkazom 
+Verify that our changes were successfully deployed with the command
 
-   ```ps
-   kubectl get kustomization -n wac-hospital
-   ```
+```ps
+kubectl get kustomization -n wac-hospital
+```
 
-7. V prehliadači otvorte stránku [https://localhost/ui/](https://localhost/ui/). Prehliadač Vás upozorní na neplatný certifikát, pretože je vydávaný _self-signed certificate_:
+7. In the browser, open the page [https://localhost/ui/](https://localhost/ui/). The browser will alert you about an invalid certificate because it is a self-signed certificate:
 
-   ![Nebezpečný certifikát](./img/040-01-SelfSignde-Cert.png)
+![Unsafe Certificate](./img/040-01-SelfSigned-Cert.png)
 
-   Stlačte tlačidlo _Rozšírené_ a následne stlačte na odkaz _Prejsť na stránku https://localhost/ui/_. Mali by ste vidieť stránku s aplikáciou, pričom prehliadač Vás v poli adresi stále upozorňuje na nebezpečné pripojenie.
+Click the _Advanced_ button, and then click the link to _Proceed to https://localhost/ui/_. You should see the application page, with the browser still warning you about the insecure connection in the address bar.
 
-   >info:> Aktuálny postup prechodu na stránku s nebezpečným certifikátom sa môže medzi prehliadačmi odlišovať.
+>info:> The current process for proceeding to a page with an unsafe certificate may vary between browsers.

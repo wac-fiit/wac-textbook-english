@@ -1,9 +1,9 @@
-# Integrácia mikro služieb do Service Mesh
+# Integration of Microservices into Service Mesh
 
-Náš systém pozostáva z jednotlivých mikroslužieb, ktoré navzájom spolupracujú a sú koordinované deklaratívnym spôsobom v systéme kubernetes. Z externého pohľadu sa ale javia ako sada rôznych služieb, nasadených v iných subdoménach, ktoré spája len ad-hoc konfigurácia. V tejto časti cvičenia tieto mikro služby zapojíme do jednej zostavy, a pridáme ďalšie vrstvy koordinácie, ktoré nám pomôžu vytvoriť ucelenejší celok nášho systému.
+Our system consists of individual microservices that collaborate in a declarative manner within the Kubernetes system. However, from an external perspective, they appear as a set of different services deployed in different subdomains, connected only by ad-hoc configuration. In this part of the exercise, we will integrate these microservices into a single assembly and add additional layers of coordination to help create a more cohesive structure for our system.
 
-Pod pojmom _Service Mesh_ v tejto kapitole rozumieme sadu nástrojov a techník, ktoré nám pomôžu vytvoriť ucelený systém z viacerých mikroslužieb. Ukážeme si aj nasadenie služieb, ktoré tieto techniky implementujú a v komunite sú tiež známe pod názvom _Service Mesh_ - napr. [Istio](https://istio.io/), [Linkerd], a iné. V našom prípade použijeme neskôr v kapitole [Linkerd].
+In this chapter, by the term "Service Mesh," we mean a set of tools and techniques that help us create a comprehensive system from multiple microservices. We will also demonstrate the deployment of services that implement these techniques and are also known in the community as "Service Mesh" tools - for example, [Istio](https://istio.io/), [Linkerd], and others. In our case, we will use [Linkerd] later in the chapter.
 
-_Obrázok znázorňuje žiadaný stav._
+_The image illustrates the desired state._
 
-![Prepojenie komponentov](./img/prepojenie-komponentov.png)
+![Component Connection](./img/component-connection.png)

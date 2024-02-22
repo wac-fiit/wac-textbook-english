@@ -1,4 +1,4 @@
-# Smerovanie požiadaviek s použitím Gateway API
+# Routing Requests Using Gateway API
 
 ---
 
@@ -8,124 +8,126 @@ devcontainer templates apply -t registry-1.docker.io/milung/wac-mesh-010
 
 ---
 
-Naše služby sú obsluhované z rôznych subdomén - rôznych adries hosťujúceho počítača - frontend je nasadení na adrese `http://localhost:30331` a WebAPI na adrese `http://localhost:30081`. Vo väčších systémoch s desiatkami mikroslužieb by tento prístup bol neudržateľný. Väčšina sietí filtruje HTTP protocol na portoch odlišných od portov `80` alebo `443`, čo by znamenalo, že každá mikroslužba musí mať vlastnú subdoménu. To by vyžadovalo správu desiatok domén a ich zabezpečenie, a tiež by znižoval flexibilitu pri evolúcii systémov. Jedným zo spôsobov ako tento problém adresovať, je zaintegrovať do systému takzvanú [_reverse proxy_](https://en.wikipedia.org/wiki/Reverse_proxy), niekedy tiež označovanú ako _Gateway_, alebo aj [_API Gateway_](https://www.redhat.com/en/topics/api/what-does-an-api-gateway-do). Označenia sa líšia ako aj rozsah funkcionality obsiahnutý za týmito službami. Pre náš účel je dôležité, aby táto služba dokázala presmerovať požiadavky na jednotlivé mikro služby na základe určitých pravidiel, typicky na základe cesty URL uvedenej v požiadavke.
+Our services are served from different subdomains - different host addresses. The frontend is deployed at `http://localhost:30331`, and the WebAPI at `http://localhost:30081`. In larger systems with dozens of microservices, this approach would be unsustainable. Most networks filter the HTTP protocol on ports other than `80` or `443`, meaning each microservice must have its own subdomain. This would require managing dozens of domains, securing them, and reduce flexibility in system evolution. One way to address this problem is to integrate a "reverse proxy," sometimes referred to as a "Gateway" or "API Gateway." The terms differ, as does the functionality included in these services. For our purpose, it is essential for this service to be able to route requests to individual microservices based on specific rules, typically based on the URL path specified in the request.
 
-Typickými reprezentantmi takýchto reverse proxy sú aplikácie [_nginx_](https://www.nginx.com) a [_Envoy Proxy_](https://www.envoyproxy.io/), nie sú ale zďaleka jediné. Keďže smerovanie požiadaviek je jednou zo základných funkcionalít pri orchestrácii mikro služieb, uviedol tím kubernetes štandardizované api [_Ingress_], ktorého implementáciu ale prenechal tretím stranám. Toto API ale nepokrývalo v základnej verzii všetky prípady reálnej praxe, jednotlivé implementácie preto API rozširujú proprietárnymi anotáciami.
+Typical representatives of such reverse proxies are applications like [nginx](https://www.nginx.com) and [Envoy Proxy](https://www.envoyproxy.io/), but they are by no means the only ones. Since routing requests is one of the fundamental functionalities in orchestrating microservices, the Kubernetes team introduced the standardized API called [Ingress], but left its implementation to third parties. However, this API did not cover all real-world cases in its basic version, so individual implementations extend the API with proprietary annotations.
 
-Na základe skúseností z implementácie [_Ingress_], sa začala pripravovať nová sada [Gateway API]. Hoci je [_Ingress_] zatiaľ najviac rozšíreným spôsobom riadenia smerovania požiadaviek v systémoch kubernetes, my si ukážeme spôsob založený na [Gateway API].
+Based on experiences from implementing [Ingress], a new set of [Gateway API] has started to be prepared. Although [Ingress] is currently the most widely used way to control request routing in Kubernetes systems, we will demonstrate an approach based on [Gateway API].
 
-[Gateway API] poskytuje viacero objektov pre konfiguráciu systémov. V produkčnom nasadení sa predpokladá, že typ `Gateway Class` dodá poskytovateľ infraštruktúry - napríklad prevádzkovateľ verejného datového centra, typ `Gateway` poskytne správca klastru - napríklad informačné oddelenie zákazníka. Vývojari samotnej aplikácie budú typicky poskytovať objekty typu `HTTPRoute`. Pre potreby lokálneho vývoja je ale potrebné nasadiť všetky typy objektov.
+[Gateway API] provides several objects for configuring systems. In production deployment, it is assumed that the `Gateway Class` type will be provided by the infrastructure provider, such as the operator of a public data center. The `Gateway` type will be provided by the cluster administrator, such as the customer's IT department. Application developers will typically provide objects of type `HTTPRoute`. However, for local development purposes, it is necessary to deploy all types of objects.
 
-## Nasadenie Gateway API
+## Deploying Gateway API
 
-1. V tomto kroku vytvoríme konfiguráciu pre nasadenie [Envoy Gateway] implementácia [Gateway API]. Vytvorte adresár `${WAC_ROOT}/ambulance_gitops/infrastructure/envoy-gateway` a v ňom vytvorte súbor `gateway-class.yaml` s nasledujúcim obsahom:
+1. In this step, we will create a configuration for deploying [Envoy Gateway], an implementation of [Gateway API]. Create a directory `${WAC_ROOT}/ambulance_gitops/infrastructure/envoy-gateway`, and within it, create a file `gateway-class.yaml` with the following content:
 
-   ```yaml
-   apiVersion: gateway.networking.k8s.io/v1beta1
-   kind: GatewayClass
-   metadata:
-     name: wac-hospital-gateway-class
-   spec:
-     controllerName: gateway.envoyproxy.io/gatewayclass-controller
-   ```
 
-   [Envoy Gateway] controller umožnuje priradenie práve jednej inštancie [GatewayClass](https://gateway-api.sigs.k8s.io/api-types/gatewayclass/). Je možné nasadiť viacero radičov [Envoy Gateway], každý by musel mať ale priradený iný názov `controllerName`. V našom prípade použijeme názov `gateway.envoyproxy.io/gatewayclass-controller`, ktorý je používaný v štandardnej konfigurácii [Envoy Gateway].
+```yaml
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: GatewayClass
+metadata:
+  name: wac-hospital-gateway-class
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+```
 
-2. Ďalej vytvorte súbor: `${WAC_ROOT}/ambulance_gitops/infrastructure/envoy-gateway/gateway.yaml` s nasledujúcim obsahom:
+The [Envoy Gateway] controller allows the assignment of exactly one instance of [GatewayClass](https://gateway-api.sigs.k8s.io/api-types/gatewayclass/). It is possible to deploy multiple [Envoy Gateway] controllers, but each must have a different `controllerName`. In our case, we will use the name `gateway.envoyproxy.io/gatewayclass-controller`, which is used in the standard configuration of [Envoy Gateway].
 
-   ```yaml
-   apiVersion: gateway.networking.k8s.io/v1beta1
-   kind: Gateway
-   metadata:
-    name: wac-hospital-gateway
-    namespace: wac-hospital
-   spec:
-    gatewayClassName: wac-hospital-gateway-class
-    listeners:
-      - name: http
-        protocol: HTTP
-        port: 80
-   ```
+2. Next, create the file: `${WAC_ROOT}/ambulance_gitops/infrastructure/envoy-gateway/gateway.yaml` with the following content:
 
-   Táto konfigurácia vytvorí v rámci klastra bod pripojenia na ktorom bude implementácia [Gateway API] čakať na prichádzajúce požiadavky a spracovávať ich podľa pravidiel definovaných v objektoch typu [`HTTPRoute`](https://gateway-api.sigs.k8s.io/api-types/httproute/).
 
-3. Vytvorte súbor: `${WAC_ROOT}/ambulance_gitops/infrastructure/envoy-gateway/kustomization.yaml` s nasledujúcim obsahom:
+```yaml
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+name: wac-hospital-gateway
+namespace: wac-hospital
+spec:
+gatewayClassName: wac-hospital-gateway-class
+listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+```
 
-   ```yaml
-   apiVersion: kustomize.config.k8s.io/v1beta1
-   kind: Kustomization
-   
-   resources:
-   - https://github.com/envoyproxy/gateway/releases/download/latest/install.yaml
-   - gateway-class.yaml
-   - gateway.yaml
-   ```
+This configuration will create, within the cluster, an endpoint where the [Gateway API] implementation will wait for incoming requests and process them according to the rules defined in objects of type [`HTTPRoute`](https://gateway-api.sigs.k8s.io/api-types/httproute/).
 
-   Tento manifest obsahuje objekty potrebné pre nasadenie [Envoy Gateway] implementácia [Gateway API] a prípravu klastra pre potreby nasadenia jednotlivých mikroslužieb.
+3. Create the file: `${WAC_ROOT}/ambulance_gitops/infrastructure/envoy-gateway/kustomization.yaml` with the following content:
 
-4. Upravte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/prepare/kustomization.yaml`
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
-   ```yaml
-   ...
-   
-   resources:
-   ...
-   - ../../../infrastructure/envoy-gateway @_add_@
-   
-   patches: 
-   ...
-   ```
+resources:
+- https://github.com/envoyproxy/gateway/releases/download/latest/install.yaml
+- gateway-class.yaml
+- gateway.yaml
+```
 
-5. Upravte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/gitops/prepare.kustomization.yaml`
+This manifest contains the objects necessary for deploying [Envoy Gateway], implementing [Gateway API], and preparing the cluster for the deployment of individual microservices.
 
-   ```yaml
-   ...
-   spec:
-     wait: true @_remove_@
-     # targeted healthcheck
-     healthChecks:    @_add_@
-       - apiVersion: apps/v1    @_add_@
-         kind: Deployment    @_add_@
-         name: envoy-gateway    @_add_@
-         namespace: envoy-gateway-system    @_add_@
-       - apiVersion: apps/v1    @_add_@
-         kind: Deployment    @_add_@
-         name: ufe-controller    @_add_@
-         namespace: wac-hospital         @_add_@
-     interval: 42s
-     ...
-   ```
+Modify the file: `${WAC_ROOT}/ambulance-gitops/clusters/localhost/prepare/kustomization.yaml`
 
-   Dôvodom pre túto úpravu je, že [Flux CD] nevie správne vyhodnotiť stav nasadenia objektov typu [_Job_](https://kubernetes.io/docs/concepts/workloads/controllers/job/), ktoré sú z Kubernetes API zmazané po ich úspešnom vykonaní. Vlastnosť `wait: true` určovala, aby overil či sú všetky objekty, ktoré sú súčasťou konfigurácie v stave _Ready_. [Envoy Gateway]  implementácia obsahuje aj objekty typu _Job_ ktoré sa vykonajú a ktoré Flux CD nevie následne overiť, či sú v stave _Ready_. Vyššie uvedenou úpravou sme túto vlastnosť vypli a namiesto nej sme pridali explicitný zoznam objektov, ktoré budú overované.
+```yaml
+...
 
-6. Uložte zmeny do vzidaleného repozitára:
+resources:
+...
+- ../../../infrastructure/envoy-gateway @_add_@
 
-   ```ps
-   git add .
-   git commit -m "Add Gateway API"
-   git push
-   ```
+patches: 
+...
+```
 
-   Potom čo [Flux CD] aplikuje zmeny, môžete skontrolovať, či boli objekty úspešne nasadené:
+5. Modify the file: `${WAC_ROOT}/ambulance-gitops/clusters/localhost/gitops/prepare.kustomization.yaml`
 
-   ```ps
-   kubectl get gatewayclass
-   kubectl get gateway
-   ```
+```yaml
+...
+spec:
+  wait: true @_remove_@
+  # targeted healthcheck
+  healthChecks:    @_add_@
+    - apiVersion: apps/v1    @_add_@
+      kind: Deployment    @_add_@
+      name: envoy-gateway    @_add_@
+      namespace: envoy-gateway-system    @_add_@
+    - apiVersion: apps/v1    @_add_@
+      kind: Deployment    @_add_@
+      name: ufe-controller    @_add_@
+      namespace: wac-hospital         @_add_@
+  interval: 42s
+  ...
+```
 
-   a prípadne otvoriť v prehliadači stránku `http://localhost`, ktorá ale bude zatiaľ poskytovať len chybové hlásenie `404 Not Found`
+The reason for this modification is that [Flux CD] cannot correctly evaluate the deployment status of objects of type [_Job_](https://kubernetes.io/docs/concepts/workloads/controllers/job/), which are deleted from the Kubernetes API after successful execution. The `wait: true` property was specifying that it should check if all objects that are part of the configuration are in the _Ready_ state. The [Envoy Gateway] implementation also includes objects of type _Job_ that are executed, and Flux CD cannot subsequently verify whether they are in the _Ready_ state. With the above modification, we turned off this property and instead added an explicit list of objects to be verified.
 
-## Smerovanie požiadaviek
+6. Save the changes to the remote repository:
 
-V našom klastri máme k dispozícii tieto služby, ku ktorým by sme sa mohli pripojiť z vonkajšej siete:
+```ps
+git add .
+git commit -m "Add Gateway API"
+git push
+```
 
-* **ufe-controller** - poskytuje naše používateľské rozhranie
-* **ambulance-webapi** - poskytuje rozhranie pre prístup k dátam
-* **swagger-ui** - poskytuje popis nášho web api
+After [Flux CD] applies the changes, you can verify whether the objects were successfully deployed:
 
-Postupne vytvoríme cesty - `HTTPRoute` - pre všetky služby, ktoré budú dostupné z vonkajšej siete.
+```ps
+kubectl get gatewayclass
+kubectl get gateway
+```
 
-1. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/ufe-controller/http-route.yaml`
+and optionally open the page `http://localhost` in the browser, which will currently only provide a `404 Not Found` error message.
+
+## Routing Requests
+
+In our cluster, we have the following services available that we could connect to from an external network:
+
+- **ufe-controller** - provides our user interface
+- **ambulance-webapi** - provides an interface for accessing data
+- **swagger-ui** - provides a description of our web API
+
+We will gradually create routes - `HTTPRoute` - for all services that will be accessible from the external network.
+
+1. Create the file: `${WAC_ROOT}/ambulance-gitops/infrastructure/ufe-controller/http-route.yaml`
 
 ```yaml
   apiVersion: gateway.networking.k8s.io/v1
@@ -163,207 +165,208 @@ Postupne vytvoríme cesty - `HTTPRoute` - pre všetky služby, ktoré budú dost
             port: 443
 ```
 
-   Vo všeobecnosti platí, že každá požiadavka musí byť spracovaná jedným alebo žiadny pravidlom uvedeným v objektoch `HTTRoute` pre daný `Gateway` objekt.  Tento manifest špecifikuje, že všetky požiadavky pri ktorých cesta začína segmentom `/ui` budú presmerované na službu `ufe-controller`. Požiadavky na root dokument `/` budú vrátene klientovi so stavom `303 -Redirect` a presmerovaním na cestu `/ui`.
+In general, each request must be processed by one or none of the rules specified in the `HTTPRoute` objects for a given `Gateway` object. This manifest specifies that all requests with a path starting with the `/ui` segment will be redirected to the `ufe-controller` service. Requests to the root document `/` will be returned to the client with a `303 - Redirect` status, redirecting to the path `/ui`.
 
-   Potrebuje upraviť [_base URL_] pre službu `ufe-controller`, ktorá bude teraz dostupná z koreňového adresáre '/' požiadaviek, ale z podadresára `/ui/`. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/ufe-controller/patches/ufe-controller.deployment.yaml` s nasledujúcim obsahom:
+There is a need to modify the [_base URL_] for the `ufe-controller` service, which will now be accessible from the root directory '/' of requests but from the subdirectory '/ui/'. Create the file: `${WAC_ROOT}/ambulance-gitops/infrastructure/ufe-controller/patches/ufe-controller.deployment.yaml` with the following content:
 
-   ```yaml
-   apiVersion: apps/v1
-   kind: Deployment
-   metadata:
-     name: ufe-controller
-   spec:
-     template: 
-       spec:
-         containers:
-         - name: ufe-controller
-           env:
-             - name: BASE_URL
-               value: /ui/
-   ```
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ufe-controller
+spec:
+  template: 
+    spec:
+      containers:
+      - name: ufe-controller
+        env:
+          - name: BASE_URL
+            value: /ui/
+```
 
-   a nakoniec upravte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/ufe-controller/kustomization.yaml`:
+and finally, modify the file: `${WAC_ROOT}/ambulance-gitops/infrastructure/ufe-controller/kustomization.yaml`:
 
-   ```yaml
-   ...
-   resources:
-   - https://github.com/milung/ufe-controller//configs/k8s/kustomize
-   - http-route.yaml @_add_@
-   @_add_@
-   patches: @_add_@
-   - path: patches/ufe-controller.deployment.yaml @_add_@
-   ```
+```yaml
+...
+resources:
+- https://github.com/milung/ufe-controller//configs/k8s/kustomize
+- http-route.yaml @_add_@
+@_add_@
+patches: @_add_@
+- path: patches/ufe-controller.deployment.yaml @_add_@
+```
 
-2. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-webapi/http-route.yaml`
+2. Create the file: `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-webapi/http-route.yaml`
 
-   ```yaml
-   apiVersion: gateway.networking.k8s.io/v1
-   kind: HTTPRoute
-   metadata:
-    name: <pfx>-ambulance-webapi
-   spec:
-    parentRefs:
-      - name: wac-hospital-gateway
-        namespace: wac-hospital-system
-      - name: wac-hospital-gateway  # Hack to make it work for common cluster
-        namespace: wac-hospital-system
-    rules:
-      - matches:
-          - path:
-              type: PathPrefix
-              value: /<pfx>-api
-        filters: 
-          - type: URLRewrite    @_important_@
-            urlRewrite:    @_important_@
-              path:    @_important_@
-                type: ReplacePrefixMatch    @_important_@
-                replacePrefixMatch: /api    @_important_@
-        backendRefs:
-          - group: ""
-            kind: Service
-            name: <pfx>-ambulance-webapi
-            port: 80
-    ```
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+name: <pfx>-ambulance-webapi
+spec:
+parentRefs:
+  - name: wac-hospital-gateway
+    namespace: wac-hospital-system
+  - name: wac-hospital-gateway  # Hack to make it work for common cluster
+    namespace: wac-hospital-system
+rules:
+  - matches:
+      - path:
+          type: PathPrefix
+          value: /<pfx>-api
+    filters: 
+      - type: URLRewrite    @_important_@
+        urlRewrite:    @_important_@
+          path:    @_important_@
+            type: ReplacePrefixMatch    @_important_@
+            replacePrefixMatch: /api    @_important_@
+    backendRefs:
+      - group: ""
+        kind: Service
+        name: <pfx>-ambulance-webapi
+        port: 80
+```
 
-   Tento manifest špecifikuje, že všetky požiadavky pri ktorých cesta začína segmentom `/<pfx>-api` budú presmerované na službu `<pfx>-ambulance-webapi`.
-   Všimnite si časť `filters` - tu špecifikujeme, že sa ma cesta `/<pfx>-api` zameniť za `/api` pred tým, ako sa požiadavka odovzdá službe `<pfx>-ambulance-webapi`. Toto je potrebné, pretože služba `<pfx>-ambulance-webapi` očakáva, že API požiadavky budú zasielané na cestu `/api`.
+This manifest specifies that all requests with a path starting with the `/<pfx>-api` segment will be redirected to the `<pfx>-ambulance-webapi` service. Note the `filters` section - here, we specify that the path `/<pfx>-api` should be replaced with `/api` before the request is handed over to the `<pfx>-ambulance-webapi` service. This is necessary because the `<pfx>-ambulance-webapi` service expects API requests to be sent to the `/api` path.
 
-   Ďalej do toho istého súboru doplňte nové pravidlo:
+Next, add the new rule to the same file:
 
-   ```yaml
-   ...
-   spec:
-     rules:
-       - matches:
-           - path:
-               type: PathPrefix
-               value: /<pfx>-api
-         ...
-       - matches:    @_add_@
-           - path:    @_add_@
-               type: PathPrefix    @_add_@
-               value: /<pfx>-openapi-ui    @_add_@
-         backendRefs:    @_add_@
-           - group: ""    @_add_@
-             kind: Service    @_add_@
-             name: <pfx>-openapi-ui    @_add_@
-             port: 80    @_add_@
-   ```
 
-   Požiadavky na cestu `/<pfx>-openapi-ui` budú presmerované na službu `<pfx>-openapi-ui`, ktorú ešte musíme nakonfigurovať - jedná sa o službu, ktorá sprístupní [Swagger UI] kontajner, nakonfigurovaný v našich manifestoch webapi služby. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/<pfx>-ambulance-webapi/openapi-ui.service.yaml`:
+```yaml
+...
+spec:
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /<pfx>-api
+      ...
+    - matches:    @_add_@
+        - path:    @_add_@
+            type: PathPrefix    @_add_@
+            value: /<pfx>-openapi-ui    @_add_@
+      backendRefs:    @_add_@
+        - group: ""    @_add_@
+          kind: Service    @_add_@
+          name: <pfx>-openapi-ui    @_add_@
+          port: 80    @_add_@
+```
 
-   ```yaml
-   kind: Service
-   apiVersion: v1
-   metadata:
-     name: <pfx>-openapi-ui
-   spec:  
-     selector:
-       pod: <pfx>-ambulance-webapi-label
-     ports:
-     - name: http
-       protocol: TCP
-       port: 80  
-       targetPort: 8081
-   ```
+Requests to the path `/<pfx>-openapi-ui` will be redirected to the `<pfx>-openapi-ui` service, which we still need to configure. This is a service that will expose the [Swagger UI] container configured in our webapi service manifests. Create the file: `${WAC_ROOT}/ambulance-gitops/infrastructure/<pfx>-ambulance-webapi/openapi-ui.service.yaml`:
 
-   Ešte raz upravte súbor súbor `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-webapi/http-route.yaml`, tentoraz pridáme obsluhu na cestu `/<pfx>-openapi`, z ktorej bude swagger ui načítavať OpenAPI špecifikáciu:
+```yaml
+kind: Service
+apiVersion: v1
+metadata:
+  name: <pfx>-openapi-ui
+spec:  
+  selector:
+    pod: <pfx>-ambulance-webapi-label
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80  
+    targetPort: 8081
+```
 
-   ```yaml
-   ...
-   spec:
-     rules:
-       - matches:
-           - path:
-               type: PathPrefix
-               value: /<pfx>-api
-         ...
-       - matches:
-           - path:
-               type: PathPrefix
-               value: /<pfx>-openapi-ui
-         ...
-       - matches:   @_add_@
-           - path:   @_add_@
-               type: Exact   @_add_@
-               value: /<pfx>-openapi   @_add_@
-         filters:    @_add_@
-         - type: URLRewrite   @_add_@
-           urlRewrite:   @_add_@
-             path:   @_add_@
-               type: ReplaceFullPath   @_add_@
-               replaceFullPath: /openapi   @_add_@
-         backendRefs:   @_add_@
-           - group: ""   @_add_@
-             kind: Service   @_add_@
-             name: <pfx>-ambulance-webapi   @_add_@
-             port: 80   @_add_@
-   ```
+Once again, modify the file: `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-webapi/http-route.yaml`, this time adding handling for the path `/<pfx>-openapi` from which Swagger UI will load the OpenAPI specification:
 
-   Pretože sme oproti manifestom v repozitári `ambulance-webapi` upravili cestu z ktorej bude [Swagger UI] načítavať OpenAPI špecifikáciu a na ktorej bude obsluhovaný, musíme upraviť aj konfiguráciu [Swagger UI] kontajnera. Tieto úpravy sú potrebné, aby sme vedeli nasadiť naše služby do spoločného klastra bez konfliktov so službami ostatných študentov. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-webapi/patches/ambulance-webapi.deployment.yaml`:
+```yaml
+...
+spec:
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /<pfx>-api
+      ...
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /<pfx>-openapi-ui
+      ...
+    - matches:   @_add_@
+        - path:   @_add_@
+            type: Exact   @_add_@
+            value: /<pfx>-openapi   @_add_@
+      filters:    @_add_@
+      - type: URLRewrite   @_add_@
+        urlRewrite:   @_add_@
+          path:   @_add_@
+            type: ReplaceFullPath   @_add_@
+            replaceFullPath: /openapi   @_add_@
+      backendRefs:   @_add_@
+        - group: ""   @_add_@
+          kind: Service   @_add_@
+          name: <pfx>-ambulance-webapi   @_add_@
+          port: 80   @_add_@
+```
 
-   ```yaml
-   apiVersion: apps/v1
-   kind: Deployment
-   metadata:
-     name: <pfx>-ambulance-webapi 
-   spec:
-     template:
-       spec:
-         containers:
-           - name: openapi-ui
-             env:
-               - name: URL
-                 value: /<pfx>-openapi
-               - name: BASE_URL
-                 value: /<pfx>-openapi-ui
-   ```
+Since we have modified the path from which [Swagger UI] will load the OpenAPI specification and where it will be handled, compared to the manifests in the `ambulance-webapi` repository, we need to adjust the configuration of the [Swagger UI] container. These modifications are necessary to deploy our services to a shared cluster without conflicts with the services of other students. Create the file: `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-webapi/patches/ambulance-webapi.deployment.yaml`:
 
-   Nakoniec upravte súbor `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-webapi/kustomization.yaml`:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: <pfx>-ambulance-webapi 
+spec:
+  template:
+    spec:
+      containers:
+        - name: openapi-ui
+          env:
+            - name: URL
+              value: /<pfx>-openapi
+            - name: BASE_URL
+              value: /<pfx>-openapi-ui
+```
 
-   ```yaml
-   ...
-   resources:
-   - 'https://github.com/milung/ambulance-webapi//deployments/kustomize/install' # ?ref=v1.0.1
-   - openapi-ui.service.yaml @_add_@
-   - http-route.yaml @_add_@
-    @_add_@
-   patches: @_add_@
-   - path: patches/ambulance-webapi.deployment.yaml @_add_@
-   ```
+Finally, modify the file: `${WAC_ROOT}/ambulance-gitops/apps/<pfx>-ambulance-webapi/kustomization.yaml`:
 
-   >homework:> Upravte manifesty v repozitári `ambulance-webapi` tak, aby obsahovali tu pridané konfigurácie pre objekt  _Service_ `<pfx>-openapi` a pre objekt _HTTPRoute_ `<pfx>-ambulance-webapi`, pričom _HttpRoute_ objekt bude voliteľný konfiguračný komponent `with-gateway-api`. Následne upravte konfiguráciu v repozitári `ambulance-gitops` tak, aby sa tieto konfigurácie aplikovali.
+```yaml
+...
+resources:
+- 'https://github.com/milung/ambulance-webapi//deployments/kustomize/install' # ?ref=v1.0.1
+- openapi-ui.service.yaml @_add_@
+- http-route.yaml @_add_@
+@_add_@
+patches: @_add_@
+- path: patches/ambulance-webapi.deployment.yaml @_add_@
+```
 
-3. Nakoniec upravíme deklaráciu našej mikro front-end aplikácie, tak aby jej atribút `api-base` ukazoval na cestu webapi na to istom hostiteľskom počítači. :
+>homework:> Modify the manifests in the `ambulance-webapi` repository to include the added configurations for the _Service_ object `<pfx>-openapi` and the _HTTPRoute_ object `<pfx>-ambulance-webapi`, where the _HTTPRoute_ object will be an optional configuration component `with-gateway-api`. Subsequently, adjust the configuration in the `ambulance-gitops` repository to apply these configurations.
 
-   ```yaml
-   ...
-     navigation:
-       - element: <pfx>-ambulance-wl-app
-         ...
-         attributes:
-           - name: api-base
-             value: http://localhost:5000/api @_remove_@
-             # use absolute path on the same host
-             value: /<pfx>-api @_add_@
-    ...
-   ```
+3. Finally, we will modify the declaration of our micro frontend application so that its `api-base` attribute points to the path of the webapi on the same host machine:
 
-4. Overte správnosť Vašej konfigurácie:
+```yaml
+...
+  navigation:
+    - element: <pfx>-ambulance-wl-app
+      ...
+      attributes:
+        - name: api-base
+          value: http://localhost:5000/api @_remove_@
+          # use absolute path on the same host
+          value: /<pfx>-api @_add_@
+...
+```
 
-    ```ps
-    kubectl kustomize clusters/localhost/prepare
-    kubectl kustomize clusters/localhost/install
-    kubectl kustomize clusters/localhost
-    ```
+4. Verify the correctness of your configuration:
 
-5. Archivujte zmeny do vzdialeného repozitára
+```ps
+kubectl kustomize clusters/localhost/prepare
+kubectl kustomize clusters/localhost/install
+kubectl kustomize clusters/localhost
+```
 
-   ```ps
-   git add .
-   git commit -m "Add HTTPRoutes"
-   git push
-   ```
+5. Archive the changes to the remote repository.
 
-   Potom čo [flux] aplikuje zmeny vo Vašom lokálnom klastri, otvorte v prehliadači stránku [http://localhost](http://localhost). Mali by ste vidieť našu aplikáciu, ktorá je schopná komunikovať s WebAPI. Pokiaľ prejdete na stránku [http://localhost/<pfx>-openapi](http://localhost/<pfx>-openapi), mali by ste vidieť popis nášho WebAPI v rozhraní [Swagger UI](https://swagger.io/tools/swagger-ui/).
+```ps
+git add .
+git commit -m "Add HTTPRoutes"
+git push
+```
+
+After [flux] applies changes in your local cluster, open the page [http://localhost](http://localhost) in your browser. You should see our application, which is capable of communicating with WebAPI. If you navigate to the page [http://localhost/<pfx>-openapi](http://localhost/<pfx>-openapi), you should see the description of our WebAPI in the [Swagger UI](https://swagger.io/tools/swagger-ui/) interface.
+
 
