@@ -15,7 +15,7 @@
 [api> API Specification Design](./101-openapi.md)
 [api> API for Record Modification](./102-crud-api.md)
 [deployed-code-update> Deployment of the Application to Production Kubernetes Cluster](./111-production-deployment.md)
-[deployed-code-update> Deployment of Team Project on Local Cluster](./112-team-projekt-lokalne.md)
+[deployed-code-update> Deployment of Team Project on Local Cluster](./112-team-project-locally.md)
 [pest-control> Debugging the Application in Developer Tools](./120-debugging.md)
 [summarize> Summary](./990-conclusion.md)
 
