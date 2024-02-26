@@ -1,4 +1,4 @@
-# Autorizácia používateľov s Open Policy Agent
+# User Authorization with Open Policy Agent
 
 ---
 
@@ -8,13 +8,13 @@ devcontainer templates apply -t registry-1.docker.io/milung/wac-mesh-070
 
 ---
 
-Autentifikácia používateľov ešte nerieši riadenie prístupu k jednotlivým zdrojom v našej aplikácii. V praxi môžeme napríklad požadovať, aby k jednotlivým ambulanciám mali prístup len používatelia s rolou `hospital-supervisor` alebo `general-practitioner` - takzvané [_Role-Based Access Control_](https://en.wikipedia.org/wiki/Role-based_access_control), alebo aby sa do čakárne mohli v určitý deň prihlasovať len pacienti s príznakom `pregnant-women` - takzvaný [_Attribute-Based Access Control_](https://en.wikipedia.org/wiki/Attribute-based_access_control).
+User Authentication alone does not address access control to individual resources in our application. In practice, we may, for example, require that only users with the role `hospital-supervisor` or `general-practitioner` have access to individual clinics - a concept known as [Role-Based Access Control](https://en.wikipedia.org/wiki/Role-based_access_control), or that only patients with the symptom `pregnant-women` can sign in to the waiting room on a certain day - known as [Attribute-Based Access Control](https://en.wikipedia.org/wiki/Attribute-based_access_control).
 
-Pre riadenie politiky prístupu, nielen v rámci autorizácie používateľov, ale pre definovanie takzvaných _policy rules_ vo všeobecnosti, použijeme [Open Policy Agent](https://www.openpolicyagent.org/). V našom prípade sa pokusíme nastaviť politiku, ktorá zabráni prístupu k mikroslužbe `http-echo` pre všetkých používateľov, okrem tých, ktorý majú našou politikou prístupu priradenú rolu "admin".
+To manage access policies, not only within user authorization but also to define general policy rules, we will use [Open Policy Agent](https://www.openpolicyagent.org/). In our case, we will attempt to set a policy that denies access to the `http-echo` microservice for all users except those who have the "admin" role assigned by our access policy.
 
->info:> Službu [OPA Envoy Plugin](https://www.openpolicyagent.org/docs/latest/envoy-introduction/) možno použiť ako _side-car_ špecifickej služby, to znamená kontrolu dodržania politiky prístupu tesne pred prístupom k špecifickej mikroslužbe, čo z hľadiska bezpečnosti zabráni, aby škodliví aktéri obišli našu autorizáciu. Neskôr si ukážeme ako zabrániť nežiadúcej komunikácii v rámci nášho service mesh-u. Konkrétne riešenie a konfigurácia systému sa v praxi budú líšiť v závislosti od konkrétnych požiadaviek riešenia, častokrát to bude kombinácia rôznych politík a mechanizmov riadenia prístupov.
+>info:> The [OPA Envoy Plugin](https://www.openpolicyagent.org/docs/latest/envoy-introduction/) can be used as a side-car for a specific service, meaning control of policy compliance just before accessing the specific microservice. This enhances security by preventing malicious actors from bypassing our authorization. Later, we will show how to prevent unwanted communication within our service mesh. The specific solution and system configuration will vary in practice depending on the specific requirements of the solution; often, it will be a combination of various policies and access control mechanisms.
 
-1. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/deployment.yaml` s nasledujúcim obsahom:
+1. Create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/deployment.yaml` with the following content:
 
 ```yaml
   apiVersion: apps/v1
@@ -88,243 +88,244 @@ Pre riadenie politiky prístupu, nielen v rámci autorizácie používateľov, a
             periodSeconds: 5  
 ```
 
-   Všimnite si položky `volumes` a `volumeMounts`, ktoré budú priraďovať konfiguračné mapy do súborového systému.
+Notice the `volumes` and `volumeMounts` entries, which will be assigning configuration maps to the file system.
 
-   Vytvorte súbor  `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/service.yaml` s nasledujúcim obsahom:
+Create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/service.yaml` with the following content:
 
-   ```yaml
-   apiVersion: v1
-   kind: Service
-   metadata:
-     name: opa-plugin
-   spec: 
-     ports:
-     - name: http
-       port: 9191
-       targetPort: 9191
-    ```
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa-plugin
+spec: 
+  ports:
+  - name: http
+    port: 9191
+    targetPort: 9191
+```
 
-2. Teraz pristúpime ku konfigurácii `opa-envoy-plugin` služby. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/params/opa-config.yaml`. Všimnite si, že sme priradili port `9191` pre `envoy_ext_authz_grpc` plugin a nastavili sme cestu k pravidlu vyhodnotenia autorizačnej politiky (_policy_).
+2. Now, let's proceed with the configuration of the `opa-envoy-plugin` service. Create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/params/opa-config.yaml`. Note that we assigned port `9191` for the `envoy_ext_authz_grpc` plugin, and we set the path to the authorization policy evaluation rule.
 
-   ```yaml
-   plugins:
-     envoy_ext_authz_grpc:
-       addr: :9191
-       path: wac/authz/result @_important_@
-   decision_logs:
-     console: true  # v produkčnom prostredí nastavte na false
-   ```
+```yaml
+plugins:
+  envoy_ext_authz_grpc:
+    addr: :9191
+    path: wac/authz/result @_important_@
+decision_logs:
+  console: true  # v produkčnom prostredí nastavte na false
+```
 
-   Všimnite si, že sme priradili port `9191` pre `envoy_ext_authz_grpc` plugin - rovnaký port ako je uvedený v objekte typu [_Service_](https://kubernetes.io/docs/concepts/services-networking/service/) a nastavili sme cestu k pravidlu vyhodnotenia autorizačnej politiky (_policy_) - `wac/authz/result`.
+Notice that we assigned port `9191` for the `envoy_ext_authz_grpc` plugin - the same port as specified in the [_Service_](https://kubernetes.io/docs/concepts/services-networking/service/) object. Additionally, we set the path to the authorization policy evaluation rule - `wac/authz/result`.
 
-3. Ďaľším krokom je definícia  politiky oprávnených prístupov pre náš systém. Keďže pracujeme na lokálnom klastri s pomerne jednoduchou aplikáciou, bude naša politika slúžiť len ako ukážka pre účely jej otestovania. Ako demonštráciu použijeme k aplikácii `http-echo`, ku ktorej povolíme prístup len niektorým zo svojich kolegov, alebo prístup pre požiadavky so špeciálnym príznakom. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/params/policy.rego` a v jazyku [Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) zadefinujeme našu testovaciu politiku. V prvom kroku vytvoríme pravidla pre získanie informácií o používateľovi, ktorý sa prihlásil do systému:
+3. The next step is to define the access policy for our system. Since we are working on a local cluster with a relatively simple application, our policy will serve as a demonstration for testing purposes. For this demonstration, we'll use the `http-echo` application and restrict access to only some of our colleagues or requests with a specific flag. Create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/params/policy.rego`, and using the [Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) language, we'll define our test policy. In the first step, we will create rules to retrieve information about the user who logged into the system.
 
-   >info:> Pre pokročilejšiu práco s Rego jazykom môžete využiť [Visual Studio Code rozšírenie](https://marketplace.visualstudio.com/items?itemName=tsandall.opa).
+>info:> For advanced Rego language work, you can use the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=tsandall.opa).
 
-   ```rego
-   package wac.authz
-   import input.attributes.request.http as http_request   
 
-   default allow = false   
+```rego
+package wac.authz
+import input.attributes.request.http as http_request   
 
-   # define authenticated user
-   is_valid_user = true { http_request.headers["x-auth-request-email"] }   
+default allow = false   
 
-   user = { "valid": valid, "email": email, "name": name} {
-       valid := is_valid_user
-       email := http_request.headers["x-auth-request-email"]
-       name := http_request.headers["x-auth-request-user"] 
-   }
-   ```
+# define authenticated user
+is_valid_user = true { http_request.headers["x-auth-request-email"] }   
 
-   Vyššie uvedený zápis vytvára pravidlo `is_valid_user`, ktoré je splnené za predpokladu, že v prichádzajúcej požiadavke sa nachádza hlavička s názvom `x-auth-request-email`. Praivdlo `user` vytvára objekt, ktorý obsahuje informácie o používateľovi, ktorý sa prihlásil do systému. Ďalej na koniec toho istého súboru `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/params/policy.rego` pridajte definíciu pravidiel pre požadované oprávnenia (role) pre špecifické požiadavky:
+user = { "valid": valid, "email": email, "name": name} {
+    valid := is_valid_user
+    email := http_request.headers["x-auth-request-email"]
+    name := http_request.headers["x-auth-request-user"] 
+}
+```
 
-   ```rego
-   # define required roles for paths
-   # admin role is allowed for any path
-   request_allowed_role["admin"] := true 
-   
-   # /monitoring path requires monitoring role
-   request_allowed_role["monitoring"] := true {
-       glob.match("/monitoring*", [], http_request.path)
-   }
-   
-   # user may access anything except /monitoring and /http-echo
-   # !!! DEMONSTRATION ONLY: this is not a good idea, because user 
-   # !!! may access any path  that is not explicitely defined in request_allowed_role
-   # !!! in production use oposite logic: define white-listed paths
-   request_allowed_role["user"] := true {
-      not glob.match("/monitoring*", [], http_request.path) 
-      not glob.match("/http-echo*", [], http_request.path)
-   }
-   ```
+The above code creates a rule `is_valid_user`, which is satisfied under the condition that the incoming request contains a header named `x-auth-request-email`. The `user` rule creates an object containing information about the user who logged into the system. Next, at the end of the same file `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/params/policy.rego`, add the definition of rules for required permissions (roles) for specific requests:
 
-   Prvé pravidlo `request_allowed_role["admin"]` určuje, že akákoľvek požiadavka je povolená s rolou `admin`, ďaľsie pravidlo `request_allowed_role["monitoring"]` určuje, že pre prístup k ceste začínajúcej sa na `/monitoring` je potrebná rola `monitoring`. Posledné pravidlo `request_allowed_role["user"]` určuje, že pre prístup k akejkoľvek ceste, ktorá nie je `/monitoring` ani `/http-echo` je potrebná rola `user`.
-  
-   >info:> V praxi by sme mali definovať pravidlá pre explicitne povolené cesty, nie pre všetky ostatné. Tiež je súbor pravidiel veľmi zjednodušený, nedodržuje prístup [_Princíp najnižšieho privilégia_](https://sk.wikipedia.org/wiki/Princ%C3%ADp_najni%C5%BE%C5%A1ieho_privil%C3%A9gia) a granularitu prístupových práv.
+```rego
+# define required roles for paths
+# admin role is allowed for any path
+request_allowed_role["admin"] := true 
 
-   Na koniec toho istého súboru pridajte pravidlá pre priradenie rolí používateľom: 
+# /monitoring path requires monitoring role
+request_allowed_role["monitoring"] := true {
+    glob.match("/monitoring*", [], http_request.path)
+}
 
-   ```rego
-   # define roles for user
+# user may access anything except /monitoring and /http-echo
+# !!! DEMONSTRATION ONLY: this is not a good idea, because user 
+# !!! may access any path  that is not explicitely defined in request_allowed_role
+# !!! in production use oposite logic: define white-listed paths
+request_allowed_role["user"] := true {
+  not glob.match("/monitoring*", [], http_request.path) 
+  not glob.match("/http-echo*", [], http_request.path)
+}
+```
 
-   # any user with valid email is user
-   user_role["user"] { 
-       user.valid
-   }
-   
-   # !!! DEMONSTRATION ONLY: backdoor for admin role @_important_@
-   user_role[ "admin" ] { 
-       [_, query] := split(http_request.path, "?")
-       glob.match("am-i-admin=yes", [], query)
-   }
-   
-   # this are admin users
-   user_role[ "admin" ] { 
-       user.email == "\<kolegov@email\>"
-   }
-   
-   # this are users with access to monitoring actions
-   user_role[ "monitoring" ] { 
-       user.email == "\<your github account\>" @_important_@
-   }
-   ```
+The first rule `request_allowed_role["admin"]` specifies that any request is allowed with the `admin` role. The next rule `request_allowed_role["monitoring"]` indicates that for access to paths starting with `/monitoring`, the `monitoring` role is required. The last rule `request_allowed_role["user"]` determines that for access to any path that is neither `/monitoring` nor `/http-echo`, the `user` role is needed.
 
-   Prvé pravidlo určuje, že každý prihlásený používateľ má rolu `user`. Ďaľšie dve pravidlá priraďujú rolu `admin` pre požiadavky s explicitne definovaným parametrom `am-i-admin=yes` v [_Query_ parametroch](https://en.wikipedia.org/wiki/Query_string) alebo pre používateľa s emailom Vášho kolegu - toto slúži len pre demonštráciu funkcionality v ďaľších odsekoch. 
+>info:> In practice, we should define rules for explicitly allowed paths rather than for all others. Also, the rule file is highly simplified, it does not adhere to the [_Principle of Least Privilege_](https://en.wikipedia.org/wiki/Principle_of_least_privilege) and the granularity of access rights.
 
-   Ďalej na koniec súboru pridajte pravidlá pre vyhodnotenie prístupových práv:
+At the end of the same file, add rules for assigning roles
 
-   ```rego
-   # action is allowed if there is some role that is in user roles
-   # and path roles simultanously
-   action_allowed {
-       some role 
-       request_allowed_role[role]
-       user_role[role]
-   }
-   
-   # allow access if user is authenticated and action is allowed
-   allow {
-       user.valid
-       action_allowed
-   }
-   ```
+```rego
+# define roles for user
 
-   Pravidlo `action_allowed` určuje, že daná akcia je povolená pokiaľ existuje taká (_`some`_) rola (`role`), ktorá je v prístupových právach pre danú cestu (`request_allowed_role[role]`) a zároveň je táto rola priradená používateľovi (`user_role[role]`). Pravidlo `allow` potom určuje, že ak je používateľ autentifikovaný a ak je akcia povolená, tak je povolený aj prístup k nášmu systému.
+# any user with valid email is user
+user_role["user"] { 
+    user.valid
+}
 
-   Nakoniec pridajte pravidlá pre vytvorenie odpovede pre  [_External Authorization Filter_](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/ext_authz/v3/ext_authz.proto) v [Envoy Proxy]:
+# !!! DEMONSTRATION ONLY: backdoor for admin role @_important_@
+user_role[ "admin" ] { 
+    [_, query] := split(http_request.path, "?")
+    glob.match("am-i-admin=yes", [], query)
+}
 
-   ```rego
-   # set header to indicate that this policy was used to validate the request
-   headers["x-validated-by"] := "opa-checkpoint"
-   
-   headers["x-auth-request-roles"] := concat(", ", [ role | 
-       some r
-       user_role[r] 
-       role := r
-   ])
+# this are admin users
+user_role[ "admin" ] { 
+    user.email == "\<kolegov@email\>"
+}
 
-   # provide result to caller
-   result["allowed"] := allow
-   result["headers"] := headers
-   ```
+# this are users with access to monitoring actions
+user_role[ "monitoring" ] { 
+    user.email == "\<your github account\>" @_important_@
+}
+```
 
-   Ako ste už mohli postrehnúť, pri full-stack vývoji potrebuje byť softvérový inžinier zbehlý v rôznych programovacích jazykov. [Rego] je logický a _rule-based_ programovací jazyk vychádzajúci z jazyka [datalog](https://datalog.sourceforge.net/). Vo vyššie uvedenom programe sú sady pravidiel, pomocou ktorých sa snažíme dospieť k výsledku pravidla `allow` - buď `true` alebo `false`. Vysledná hodnota určí, či bude povolené pokračovať v spracovaní požiadavky. Zároveň sa snažíme vytvoriť hlavičky odpovede, ktoré budú obsahovať informácie o používateľovi a jeho oprávneniach. V praxi sú pravidlá ako `request_allowed_role` a `user_role` definované v externých úložiskách (databázach) a sú dynamicky načítavané do služby - pre podrobnosti pozri [návod](https://www.openpolicyagent.org/docs/latest/external-data/) .
+The first rule specifies that every logged-in user has the `user` role. The next two rules assign the `admin` role for requests with an explicitly defined parameter `am-i-admin=yes` in the [_Query_ parameters](https://en.wikipedia.org/wiki/Query_string) or for a user with the email of your colleague - this is for demonstration purposes in the following sections.
 
-4. Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/kustomization.yaml`
+Further, at the end of the file, add rules for evaluating access rights:
 
-   ```yaml
-   apiVersion: kustomize.config.k8s.io/v1beta1
-   kind: Kustomization
-   
-   namespace: wac-hospital
-   
-   commonLabels:
-     app.kubernetes.io/part-of: wac-hospital
-     app.kubernetes.io/component: opa-plugin
-   
-   resources:
-   - deployment.yaml
-   - service.yaml
-   
-   configMapGenerator:
-   - name: opa-config
-     files:
-       - config.yaml=params/opa-config.yaml
-   - name: opa-policy
-     files: 
-     - params/policy.rego
-   ```
+```rego
+# action is allowed if there is some role that is in user roles
+# and path roles simultanously
+action_allowed {
+    some role 
+    request_allowed_role[role]
+    user_role[role]
+}
 
-    a do súboru `${WAC_ROOT}/ambulance-gitops/clusters/localhost/prepare/kustomization.yaml` pridajte referenciu:
+# allow access if user is authenticated and action is allowed
+allow {
+    user.valid
+    action_allowed
+}
+```
 
-    ```yaml
+The rule `action_allowed` specifies that a given action is allowed if there exists at least one (`some`) role (`role`) that is in the access rights for the given path (`request_allowed_role[role]`), and at the same time, this role is assigned to the user (`user_role[role]`). The rule `allow` then determines that if the user is authenticated and the action is allowed, access to our system is granted.
+
+Finally, add rules for creating a response for the [_External Authorization Filter_](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/ext_authz/v3/ext_authz.proto) in [Envoy Proxy]:
+
+```rego
+# set header to indicate that this policy was used to validate the request
+headers["x-validated-by"] := "opa-checkpoint"
+
+headers["x-auth-request-roles"] := concat(", ", [ role | 
+    some r
+    user_role[r] 
+    role := r
+])
+
+# provide result to caller
+result["allowed"] := allow
+result["headers"] := headers
+```
+
+As you may have noticed, in full-stack development, a software engineer needs to be proficient in various programming languages. [Rego] is a logical and rule-based programming language based on [datalog](https://datalog.sourceforge.net/). In the above program, there are sets of rules used to reach the result of the `allow` rule - either `true` or `false`. The resulting value determines whether to allow further processing of the request. Additionally, we aim to create response headers containing information about the user and their permissions. In practice, rules like `request_allowed_role` and `user_role` are defined in external repositories (databases) and dynamically loaded into the service - for details, refer to the [guide](https://www.openpolicyagent.org/docs/latest/external-data/).
+
+4. Create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/opa-plugin/kustomization.yaml`
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: wac-hospital
+
+commonLabels:
+  app.kubernetes.io/part-of: wac-hospital
+  app.kubernetes.io/component: opa-plugin
+
+resources:
+- deployment.yaml
+- service.yaml
+
+configMapGenerator:
+- name: opa-config
+  files:
+    - config.yaml=params/opa-config.yaml
+- name: opa-policy
+  files: 
+  - params/policy.rego
+```
+
+and add a reference to the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/prepare/kustomization.yaml`:
+
+```yaml
+...
+resources: 
+...
+- ../../../infrastructure/opa-plugin @_add_@
+
+...
+```
+
+5. Similarly to the authentication with `oauth2-proxy`, we will add authorization among the list of filters in [Envoy Proxy]. Modify the file `${WAC_ROOT}/ambulance-gitops/infrastructure/envoy-gateway/envoy-patch-policy.yaml`:
+
+```yaml
+...
+spec:
+  ...
+  jsonPatches:
+    - type: "type.googleapis.com/envoy.config.listener.v3.Listener"
     ...
-    resources: 
-    ...
-    - ../../../infrastructure/opa-plugin @_add_@
+    - type: "type.googleapis.com/envoy.config.listener.v3.Listener"             @_add_@
+      name:  wac-hospital/wac-hospital-gateway/fqdn             @_add_@
+      operation:             @_add_@
+        op: add             @_add_@
+        path: "/filter_chains/0/filters/0/typed_config/http_filters/1"             @_add_@
+        value:             @_add_@
+          name: authorization.ext_authz             @_add_@
+          typed_config:             @_add_@
+            "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz             @_add_@
+            transport_api_version: V3             @_add_@
+            grpc_service:             @_add_@
+              google_grpc:             @_add_@
+                stat_prefix: opa             @_add_@
+                target_uri: opa-plugin.wac-hospital:9191             @_add_@
+              timeout: 3s             @_add_@
+```
 
-    ...
-    ```
+6. Save the changes and archive them in the remote repository:
 
-5. Podobne ako v prípade autentifikácie pomocou `oauth2-proxy`, pridáme aj autorizáciu medzi zoznam filtrov v [Envoy Proxy]. Upravte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/envoy-gateway/envoy-patch-policy.yaml`:
+```ps
+git add .
+git commit -m "Add open policy agent"
+git push
+```
 
-    ```yaml
-    ...
-    spec:
-      ...
-      jsonPatches:
-        - type: "type.googleapis.com/envoy.config.listener.v3.Listener"
-        ...
-        - type: "type.googleapis.com/envoy.config.listener.v3.Listener"             @_add_@
-          name:  wac-hospital/wac-hospital-gateway/fqdn             @_add_@
-          operation:             @_add_@
-            op: add             @_add_@
-            path: "/filter_chains/0/filters/0/typed_config/http_filters/1"             @_add_@
-            value:             @_add_@
-              name: authorization.ext_authz             @_add_@
-              typed_config:             @_add_@
-                "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz             @_add_@
-                transport_api_version: V3             @_add_@
-                grpc_service:             @_add_@
-                  google_grpc:             @_add_@
-                    stat_prefix: opa             @_add_@
-                    target_uri: opa-plugin.wac-hospital:9191             @_add_@
-                  timeout: 3s             @_add_@
-    ```
+Verify that the latest changes are applied in your cluster.
 
-6. Uložte zmeny a archivujte ich vo vzdialenom repozitári:
+```ps
+kubectl -n wac-hospital get kustomization -w
+```
 
-   ```ps
-    git add .
-    git commit -m "Add open policy agent"
-    git push
-   ```
+  Verify that the status of the _Envoy Patch Policy_ object is `Programmed`.
 
-   Overte, že sa aplikujú najnovšie zmeny vo Vašom klastri
+>info:> In case the status does not change to `Programmed`, it is necessary to restart the Envoy Gateway pods.
 
-    ```ps
-    kubectl -n wac-hospital get kustomization -w
-    ```
+```ps
+kubectl -n wac-hospital get epp
+```
 
-    Overte, že stav objektu _Envoy Patch Policy_ je `Programmed`
-    
-    >info:> V pripade že sa stav nemení na Programmed je potrebné reštartovať pody envoy gateway.
+7. In the browser, go to the page [https://wac-hospital.loc](https://wac-hospital.loc), which should be displayed without any changes. Now go to the page [https://wac-hospital.loc/http-echo](https://wac-hospital.loc/http-echo) - the page is empty, and in the _Developer Tools -> Network_, you can see the response `403 Unauthorized`. Go to the page [https://wac-hospital.loc/http-echo?am-i-admin=yes](https://wac-hospital.loc/http-echo?am-i-admin=yes). In this case, you should see the response from the `http-echo` microservice. Similarly, you can open a private browser window and ask a colleague whose email you specified in the access policy to log in to the page [https://wac-hospital.loc/http-echo](https://wac-hospital.loc/http-echo). In this case, they should also see the response from the `http-echo` service.
 
-    ```ps
-    kubectl -n wac-hospital get epp
-    ```
+Examine the response from the `http-echo` service. Among the headers of the request incoming to the `http-echo` service, you should find the following:
 
-7. V prehliadači prejdite na stránku [https://wac-hospital.loc](https://wac-hospital.loc), ktorá by mala byť zobrazená bez zmeny. Teraz prejdite na stránku [https://wac-hospital.loc/http-echo](https://wac-hospital.loc/http-echo) - stránka je prázdna a v _Nástrojoch vývojarov -> Sieť_ možete vidieť odpoveď `403 Unauthorized`. Prejdite na stránku [https://wac-hospital.loc/http-echo?am-i-admin=yes](https://wac-hospital.loc/http-echo?am-i-admin=yes). V tomto prípade sa zobrazí odozva mikroslužby `http-echo`. Podobne môžete otvoriť v prehliadači súkromné okno a požiadať kolegu, ktorého e-mail ste zadali v politike prístupov, aby sa prihlásil na stránku [https://wac-hospital.loc/http-echo](https://wac-hospital.loc/http-echo). V tomto prípade by mal tiež vidieť odozvu služby `http-echo`.
+```json
+...
+"x-auth-request-email": "<your github email>",
+"x-auth-request-user": "<your github user id>",
+"x-auth-request-roles": "admin, monitoring, user",
+...
+```
 
-   Prezrite si odozvu zo služby `http-echo`. Medzi hlavičkami požiadavky, prichádzajúcej na službu `http-echo` by ste mali nájsť aj nasledovné:
-
-   ```json
-   ...
-   "x-auth-request-email": "<your github email>",
-   "x-auth-request-user": "<your github user id>",
-   "x-auth-request-roles": "admin, monitoring, user",
-   ...
-   ```
-
-Vygenerované hlavičky môžeme ďalej využívať buď na detailnejšie smerovanie požiadaviek v objektoch typu [_HTTPRoute_](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1alpha2.HTTPRoute), alebo môžeme nasadiť [OPA Envoy Plugin](https://www.openpolicyagent.org/docs/latest/envoy-introduction/) ako sidecar k niektorej z naších služieb a ďalej riadiť politiky prístupov v rámci nášho service mesh-u. Pre dynamickú správu priradených rôl by sme náš klaster museli rozšíriť o službu, ktorú by [OPA Envoy Plugin](https://www.openpolicyagent.org/docs/latest/envoy-introduction/) mohol použiť na dynamické načítanie politiky prístupv.
+We can further utilize the generated headers either for more detailed request routing in objects like [_HTTPRoute_](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1alpha2.HTTPRoute), or we can deploy the [OPA Envoy Plugin](https://www.openpolicyagent.org/docs/latest/envoy-introduction/) as a sidecar to one of our services and continue to control access policies within our service mesh. For dynamic management of assigned roles, we would need to expand our cluster with a service that the [OPA Envoy Plugin](https://www.openpolicyagent.org/docs/latest/envoy-introduction/) could use to dynamically load access policies.
