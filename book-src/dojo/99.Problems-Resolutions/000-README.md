@@ -1,5 +1,5 @@
-## Riešenie technických problémov pri práci na cvičeniach
+## Solution to Technical Issues during Exercise Work
 
-Cvičenia sme zostavili spôsobom, ktorý by mal umožňovať ich bezproblémový beh na väčšine operačných systémov. Vzhľadom na rozmanitosť prostredí, s ktorými sa stretávame je možné, že sa vo Vašom prípade vyskytnú niektoré zo známych technických problémov. Na niektoré upozorňujeme priamo v jednotlivých kapitolách. V tejto sekcii sú zhrnuté jednotlivé problémy, ktoré sú nám známe. Zároveň sú uvedené postupy ako tieto problémy riešiť.
+We have designed the exercises in a way that should enable their smooth execution on most operating systems. Due to the diversity of environments we encounter, it is possible that some of the known technical issues may arise in your case. We explicitly mention some of them in individual chapters. This section summarizes specific problems that we are aware of and provides procedures for addressing these issues.
 
- V prípade, že sa vám však pri práci na cvičeniach vyskytnú nejaké iné problémy, budeme radi, ak nás na ne upozorníte.
+However, if you encounter any other problems while working on the exercises, we would appreciate it if you could bring them to our attention.
