@@ -1,11 +1,13 @@
 FROM milung/book-builder as book-builder
 LABEL maintainer="milan.unger@siemens-healthineers.com"
 ARG version=latest
-ARG title="Materials WAC"
+ARG title="Web Development in Cloud"
 ARG description="Materials for the subject Development of web applications in the cloud environment"
 ARG author="Milan Unger"
 ARG email="milan.unger@siemens-healthineers.com"
-ARG figure_caption="Image %d."
+ARG figure_caption="Figure %d."
+ARG book_language="EN"
+ARG book_title="Web Development in Cloud"
 
 WORKDIR /usr/src/app
 COPY book-src/ book-src/
@@ -24,7 +26,9 @@ RUN node build/makehtml/version.js \
      --description "${description}" \
      --author "${author}" \
      --email "${email}" \
-     --image-caption "${figure_caption}" 
+     --image-caption "${figure_caption}"  \
+     --book-language "${book_language}" \
+     --book-title "${book_title}"
 
 ## build SPA server executable
 FROM milung/spa-server as spa-builder
