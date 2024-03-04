@@ -1,4 +1,4 @@
-# Sledovanie stavu systému pomocou metrík s využitím služieb Prometheus a Grafana
+# Monitoring System Status Using Metrics with Prometheus and Grafana Services
 
 ---
 
@@ -8,356 +8,360 @@ devcontainer templates apply -t registry-1.docker.io/milung/wac-mesh-090
 
 ---
 
-Pokiaľ sú naše logy vhodne vytvorené, môžeme z nich okrem analýzy problémov získať aj dostatok informácii o aktuálnom stave systému. Logy však primárne neriešia túto úlohu a vo väčšine prípadov nie sú najvhodnejším spôsobom na sledovanie rôznych výkonnvých parametrov systému a a iných metrík systému  vo všeobecnosti. V tejto časti si ukážeme ako náš systém obohatiť o zber metrík formou časových sérií aktuálneho stavu systému. Na začiatok si ukážeme ako zozbierať tieto metriky pre samotný klaster, a v ďaľšej časti si ukážeme postup ako generovať špecifické metriky pre našu aplikáciu. Pre účel zberu metrík využijeme nástroj [Prometheus] a pre ich vizualizáciu nástroj [Grafana](https://grafana.com/).
+If our logs are well-structured, we can extract enough information about the current system state from them, besides just troubleshooting analysis. However, logs primarily do not address this task, and in most cases, they are not the most suitable way to monitor various performance parameters of the system and other system metrics in general. In this section, we will show how to enrich our system with metric collection in the form of time series of the current system state. First, we'll demonstrate how to collect these metrics for the cluster itself, and in the next section, we'll show the process of generating specific metrics for our application. For metric collection, we will use the [Prometheus] tool, and for visualization, the [Grafana](https://grafana.com/) tool.
 
-Nástroj [Prometheus] patrí medzi najčastejšie využívane nástroje na monitorovanie stavu komplexných systémov. Zaznamenáva merania získavané z rôznych zdrojov, pričom každému meraniu priradí časovú značku, čím vznikne časová séria takýchto meraní. Meraním môže byť objem alokovanej pamäti, oneskorenie odpovede na HTTP požiadavku, a mnoho ďaších ukozaovateľov. Jednotlivé merania potom možno zo zystému získať, vzájomne kombinovať alebo agregovať dotazovacieho jazyka [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/). [Prometheus] obsahuje aj jednoduché rozhranie na získanie a vizualizáciu údajov, vo všeobecnosti sa ale na účely vizualizácie stavu systému využívaju špecializované nástroje, v našom prípade to bude nástroj [Grafana].
+The [Prometheus] tool is among the most commonly used tools for monitoring the state of complex systems. It records measurements obtained from various sources, assigning a timestamp to each measurement, creating a time series of such measurements. Measurements can include the volume of allocated memory, response time delay for an HTTP request, and many other indicators. Individual measurements can then be retrieved, combined, or aggregated using the [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/) query language. [Prometheus] also includes a simple interface for obtaining and visualizing data, but specialized tools are generally used for system status visualization, in our case, it will be the [Grafana] tool.
 
->info:> Metriky zo služby [Prometheus] je možné sprístupniť aj v službe [OpenSearch], avšak v dobe písania tohto textu - november 2023 - táto funkcionalita bola ešte limitovaná a nie celkom stabilná. Aktuálny stav a návod na použitie nájdete v [dokumentácii](https://opensearch.org/docs/latest/observing-your-data/prometheusmetrics/).
+>info:> Metrics from the [Prometheus] service can also be accessed in the [OpenSearch] service, but as of the writing of this text - November 2023 - this functionality was still limited and not quite stable. Check the [documentation](https://opensearch.org/docs/latest/observing-your-data/prometheusmetrics/) for the current status and usage instructions.
 
-1. Pri nasadení [Prometheus] na kubernetes klaster je potrebné zvoliť vhodný spôsob nasadenia. V našom prípade použijeme [Helm] chart [prometheus-community/prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus), ktorý okrem konfigurácie servera _Prometheus_ zabezpečí aj nasadenie ďaľších komponentov, v našom prípade je asi najdôležitejšou služba [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics#readme), ktorá zabezpečí zber metrík z kubernetes klastera. Nasadenie budeme vykonávať použitím objektov operátora [FluxCD].
+1. When deploying [Prometheus] on a Kubernetes cluster, it is necessary to choose a suitable deployment method. In our case, we will use the [Helm] chart [prometheus-community/prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus), which, in addition to configuring the _Prometheus_ server, also ensures the deployment of other components. In our case, the most important service is [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics#readme), which ensures the collection of metrics from the Kubernetes cluster. The deployment will be performed using the objects of the [FluxCD] operator.
 
-   Vytvorte adresár `${WAC_ROOT}/ambulance-gitops/infrastructure/prometheus` a v ňom súbor `${WAC_ROOT}ambulance-gitops/infrastructure/prometheus/helm-repository.yaml` s nasledujúcim obsahom:
+Create the directory `${WAC_ROOT}/ambulance-gitops/infrastructure/prometheus` and within it, create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/prometheus/helm-repository.yaml` with the following content:
 
-   ```yaml
-   apiVersion: source.toolkit.fluxcd.io/v1beta2
-   kind: HelmRepository
-   metadata:
-     name: prometheus-community
-     namespace: wac-hospital
-   spec:
-     interval: 1m
-     url: https://prometheus-community.github.io/helm-charts
-   ```
+```yaml
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: prometheus-community
+  namespace: wac-hospital
+spec:
+  interval: 1m
+  url: https://prometheus-community.github.io/helm-charts
+```
 
-   Objekt [_HelmRepository_](https://fluxcd.io/flux/components/source/helmrepositories/) slúži systému [FluxCD] ako referencia zdroja - repozitára - [Helm] balíčkov.
+The [_HelmRepository_](https://fluxcd.io/flux/components/source/helmrepositories/) object serves as a reference source - repository - for [FluxCD] to Helm packages.
 
-   Ďalej vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/prometheus/helm-release.yaml` s nasledujúcim obsahom:
+Next, create the file `${WAC_ROOT}/ambulance-gitops/infrastructure/prometheus/helm-release.yaml` with the following content:
 
-    ```yaml
-    apiVersion: helm.toolkit.fluxcd.io/v2beta1
-    kind: HelmRelease
-    metadata:
-      name: prometheus
+```yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+name: prometheus
+namespace: wac-hospital
+spec:
+interval: 1m
+chart:
+  spec:
+    chart: prometheus   
+
+    sourceRef:
+      kind: HelmRepository
+      name: prometheus-community @_important_@
       namespace: wac-hospital
+    interval: 1m
+    reconcileStrategy: Revision
+values:
+  prometheus-node-exporter:
+    hostRootFsMount:
+      mountPropagation: false # required on docker-desktop kluster 
+```
+
+Using the [_HelmRelease_](https://fluxcd.io/flux/components/source/helmcharts/) object of [FluxCD], we specify that the `prometheus` package should be installed on the target cluster from the repository defined by the `prometheus-community` object of type [_HelmRepository_](https://fluxcd.io/flux/components/source/helmrepositories/).
+
+Create the file `${WAC_ROOT}/ambulance-gitops/infrastructure/prometheus/kustomization.yaml` and integrate the previous manifests.
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: wac-hospital
+
+resources:
+- helm-repository.yaml
+- helm-release.yaml
+```
+
+2. Prepare the configuration for the [Grafana] service. Create the directory `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana` and within it, create the file `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/deployment.yaml`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  template:
     spec:
-      interval: 1m
-      chart:
-        spec:
-          chart: prometheus   
+      securityContext:
+        fsGroup: 472
+        supplementalGroups:
+          - 0
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http-grafana
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /robots.txt
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 2
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 250m
+              memory: 750Mi
+          volumeMounts:
+            - mountPath: /var/lib/grafana
+              name: grafana-pv
+            - mountPath: /etc/grafana
+              name: config
+            - mountPath: /etc/grafana/provisioning/datasources
+              name: datasources
+      volumes:
+        - name: grafana-pv
+          persistentVolumeClaim:
+            claimName: grafana  @_important_@
+        - name: config
+          configMap:
+            name: grafana-config  @_important_@
+        - name: datasources
+          configMap:
+            name: grafana-datasources @_important_@
+```
 
-          sourceRef:
-            kind: HelmRepository
-            name: prometheus-community @_important_@
-            namespace: wac-hospital
-          interval: 1m
-          reconcileStrategy: Revision
-      values:
-        prometheus-node-exporter:
-          hostRootFsMount:
-            mountPropagation: false # required on docker-desktop kluster 
-      ```
+In this file, we defined the deployment of the container with the [Grafana] tool and assigned two configuration sources to it. The first is the `grafana-config` object of type [_ConfigMap_](https://kubernetes.io/docs/concepts/configuration/configmap/), which will contain the configuration of the [Grafana] tool itself. The second is the `grafana-datasources` object of type [_ConfigMap_](https://kubernetes.io/docs/concepts/configuration/configmap/), which will contain the configuration of data sources for the [Grafana] tool. We will create these objects in the following steps.
 
-   Pomocou objektu [_HelmRelease_](https://fluxcd.io/flux/components/source/helmcharts/) systému [FluxCD] predpisujeme aby na cieľovam klastri nainštaloval balíček `prometheus` z repozitára určeného objektom `prometheus-community` typu [_HelmRepository_](https://fluxcd.io/flux/components/source/helmrepositories/).
+Create the file `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/params/grafana.ini`:
 
-   Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/prometheus/kustomization.yaml` a zintegrujte predchádzajúce manifesty.
+```ini
+[server]
+domain = wac-hospital.loc @_important_@
+root_url = https://wac-hospital.loc/grafana/ @_important_@
+serve_from_sub_path = true @_important_@
 
-   ```yaml
-   apiVersion: kustomize.config.k8s.io/v1beta1
-   kind: Kustomization
+[security]
+# enable iframe embedding in ufe-controller
+# or to embed graphs in external pages
+allow_embedding = true
 
-   namespace: wac-hospital
+[users]
+auto_assign_org=true
+auto_assign_org_role=Admin
 
-   resources:
-   - helm-repository.yaml
-   - helm-release.yaml
-   ```
+[auth]
+disable_login_form = true
 
-2. Pripravíme konfiguráciu pre službu [Grafana]. Vytvorte priečinok `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana` a v ňom súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/deployment.yaml`:
+[auth.proxy]
+enabled = true
+header_name = x-auth-request-email @_important_@
+header_property = email
+auto_sign_up = true
+sync_ttl = 60
+whitelist =
+headers = Name:x-auth-request-preferred-username Groups:x-auth-request-groups Role:x-auth-request-groups
+enable_login_token = false
+```
 
-   ```yaml
-   apiVersion: apps/v1
-   kind: Deployment
-   metadata:
-     name: grafana
-   spec:
-     template:
-       spec:
-         securityContext:
-           fsGroup: 472
-           supplementalGroups:
-             - 0
-         containers:
-           - name: grafana
-             image: grafana/grafana:latest
-             imagePullPolicy: IfNotPresent
-             ports:
-               - containerPort: 3000
-                 name: http-grafana
-                 protocol: TCP
-             readinessProbe:
-               failureThreshold: 3
-               httpGet:
-                 path: /robots.txt
-                 port: 3000
-                 scheme: HTTP
-               initialDelaySeconds: 10
-               periodSeconds: 30
-               successThreshold: 1
-               timeoutSeconds: 2
-             livenessProbe:
-               failureThreshold: 3
-               initialDelaySeconds: 30
-               periodSeconds: 10
-               successThreshold: 1
-               tcpSocket:
-                 port: 3000
-               timeoutSeconds: 1
-             resources:
-               requests:
-                 cpu: 250m
-                 memory: 750Mi
-             volumeMounts:
-               - mountPath: /var/lib/grafana
-                 name: grafana-pv
-               - mountPath: /etc/grafana
-                 name: config
-               - mountPath: /etc/grafana/provisioning/datasources
-                 name: datasources
-         volumes:
-           - name: grafana-pv
-             persistentVolumeClaim:
-               claimName: grafana  @_important_@
-           - name: config
-             configMap:
-               name: grafana-config  @_important_@
-           - name: datasources
-             configMap:
-               name: grafana-datasources @_important_@
-   ```
+In the initialization file, we allowed anonymous access to the [Grafana] tool in the basic configuration. We also set basic parameters for authentication using the HTTP header `x-forwarded-email`. This header will contain the email address of the user who logs into the [Grafana] tool. This header will be created by the [oauth2-proxy] service, which we deployed in previous sections. We also specified that the [Grafana] tool will be available at the address `https://wac-hospital.loc/grafana/`.
 
-   V tomto súbore sme definovali nasadenie kontajnera s nástrojom [Grafana] a priradili sme mu dva zdroje konfigurácie. Prvým je objekt `grafana-config` typu [_ConfigMap_](https://kubernetes.io/docs/concepts/configuration/configmap/), ktorý bude obsahovať konfiguráciu samotného nástroja [Grafana], druhým je objekt `grafana-datasources` typu [_ConfigMap_](https://kubernetes.io/docs/concepts/configuration/configmap/), ktorý bude obsahovať konfiguráciu zdrojov dát pre nástroj [Grafana]. Tieto objekty vytvoríme v nasledujúcich krokoch.
+Create the file `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/params/prometheus-datasource.yaml`:
 
-   Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/params/grafana.ini`:
 
-   ```ini
-   [server]
-   domain = wac-hospital.loc @_important_@
-   root_url = https://wac-hospital.loc/grafana/ @_important_@
-   serve_from_sub_path = true @_important_@
-   
-   [security]
-   # enable iframe embedding in ufe-controller
-   # or to embed graphs in external pages
-   allow_embedding = true
+```yaml
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus-server.wac-hospital @_important_@
+    jsonData:
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: 2.47.0
+      cacheLevel: 'High'
+      disableRecordingRules: false
+      incrementalQueryOverlapWindow: 10m
+```
 
-   [users]
-   auto_assign_org=true
-   auto_assign_org_role=Admin
-   
-   [auth]
-   disable_login_form = true
-   
-   [auth.proxy]
-   enabled = true
-   header_name = x-auth-request-email @_important_@
-   header_property = email
-   auto_sign_up = true
-   sync_ttl = 60
-   whitelist =
-   headers = Name:x-auth-request-preferred-username Groups:x-auth-request-groups Role:x-auth-request-groups
-   enable_login_token = false
-   ```
+[Grafana] allows configuring data sources through the user interface or via automatic setup - [_provisioning_](https://grafana.com/docs/grafana/latest/administration/provisioning/), which allows preconfiguring known data source settings. This configuration is applied when the _Grafana_ service starts. In our case, we configured the data source for the [Prometheus] tool, which we deployed in the previous step.
 
-   V inicializačnom súbore sme v základnej konfigurácii povolili anonymný prístup k nástroju [Grafana] a nastavili sme základné parametre pre autentifikáciu pomocou HTTP hlavičky `x-forwarded-email`. Táto hlavička bude obsahovať emailovú adresu používateľa, ktorý sa prihlási do nástroja [Grafana]. Táto hlavička bude vytvorená službou [oauth2-proxy], ktorú  sme nasadili v predchádzajúcich častiach. Tiež sme špecifikovali, že nástroj [Grafana] bude dostupný na adrese `https://wac-hospital.loc/grafana/`.
+>info:> [Grafana] also supports automatic configuration of data panels - _dashboards_. In the exercise, we will proceed with manual creation of data panels. You can then view, save, and use their configurations in JSON format for automatic provisioning. These configurations must be stored in the directory `/etc/grafana/provisioning/dashboards` - the _mountPath_ parameter of the `grafana` container.
 
-   Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/params/prometheus-datasource.yaml`:
+Prepare the configuration for [_Persistent Volume Claim_](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims). Create the file `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/pvc.yaml`:
 
-   ```yaml
-   apiVersion: 1
-   datasources:
-     - name: Prometheus
-       type: prometheus
-       access: proxy
-       url: http://prometheus-server.wac-hospital @_important_@
-       jsonData:
-         httpMethod: POST
-         manageAlerts: true
-         prometheusType: Prometheus
-         prometheusVersion: 2.47.0
-         cacheLevel: 'High'
-         disableRecordingRules: false
-         incrementalQueryOverlapWindow: 10m
-   ```
 
-   [Grafana] umožňuje konfigurovať zdroj údajov cez používateľské rozhranie, alebo formou automatického nastavenia -  [_provisioning_](https://grafana.com/docs/grafana/latest/administration/provisioning/), ktorý umožňuje predpripraviť konfiguráciu známych zdrojov údajov. Táto konfigurácia sa aplikuje pri štarte služby _Grafana_. V našom prípade sme konfigurovali zdroj údajov pre nástroj [Prometheus], ktorý sme nasadili v predchádzajúcom kroku.
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+```
 
-   >info:> [Grafana] podporuje aj automatické nastavenie údajových panelov - _dashboards_. V cvičení budeme postupovať manuálnym vytváranim údajových panelov. Ich konfiguráciu vo forme JSON špecifikácií si potom môžete zobraziť v používateľskom rozhraní, uložiť a použiť pre automatické nastavenie. Tieto špecifikácie musia byť uložené v adresári `/etc/grafana/provisioning/dashboards` - _mountPath_ parameter kontajnera `grafana`.
+Next, configure the [_Service_](https://kubernetes.io/docs/concepts/services-networking/service/) object in the file `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/service.yaml`:
 
-   Pripravíme konfiguráciu pre [_Persistent Volume Claim_](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims). vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/pvc.yaml`:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: http-grafana
+```
 
-   ```yaml
-   apiVersion: v1
-   kind: PersistentVolumeClaim
-   metadata:
-     name: grafana
-   spec:
-     accessModes:
-       - ReadWriteOnce
-     resources:
-       requests:
-         storage: 1Gi
-   ```
+Finally, integrate all configuration files using the file `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/kustomization.yaml`:
 
-   Ďalej nakonfigurujeme objekt [_Service_](https://kubernetes.io/docs/concepts/services-networking/service/) v súbore `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/service.yaml`:
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
-   ```yaml
-   apiVersion: v1
-   kind: Service
-   metadata:
-     name: grafana
-   spec:
-     ports:
-       - port: 80
-         protocol: TCP
-         targetPort: http-grafana
-   ```
+namespace: wac-hospital
 
-   Nakoniec všetky konfiguráčné súbory integrujte pomocou súboru `${WAC_ROOT}/ambulance-gitops/infrastructure/grafana/kustomization.yaml`:
+commonLabels:
+  app.kubernetes.io/component: grafana
+  
+resources:
+- deployment.yaml
+- pvc.yaml
+- service.yaml
 
-   ```yaml
-   apiVersion: kustomize.config.k8s.io/v1beta1
-   kind: Kustomization
 
-   namespace: wac-hospital
-   
-   commonLabels:
-     app.kubernetes.io/component: grafana
-     
-   resources:
-   - deployment.yaml
-   - pvc.yaml
-   - service.yaml
-   
-   
-   configMapGenerator:
-     - name: grafana-config
-       files: 
-       - params/grafana.ini
-     - name: grafana-datasources
-       files:
-       - params/prometheus-datasource.yaml
-   ```
+configMapGenerator:
+  - name: grafana-config
+    files: 
+    - params/grafana.ini
+  - name: grafana-datasources
+    files:
+    - params/prometheus-datasource.yaml
+```
 
-3. Vytvorte objekt [_HTTPRoute_](https://gateway-api.sigs.k8s.io/docs/concepts/httproute/) v súbore `${WAC_ROOT}/ambulance-gitops/apps/observability-webc/grafana.http-route.yaml`:
+3. Create the [_HTTPRoute_](https://gateway-api.sigs.k8s.io/docs/concepts/httproute/) object in the file `${WAC_ROOT}/ambulance-gitops/apps/observability-webc/grafana.http-route.yaml`:
 
-   ```yaml
-   apiVersion: gateway.networking.k8s.io/v1
-   kind: HTTPRoute
-   metadata:
-     name: grafana
-   spec:
-     parentRefs:
-       - name: wac-hospital-gateway
-     rules:
-       - matches:
-           - path:
-               type: PathPrefix
-               value: /grafana
-         backendRefs:
-           - group: ""
-             kind: Service
-             name: grafana
-             port: 80
-   ```
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana
+spec:
+  parentRefs:
+    - name: wac-hospital-gateway
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /grafana
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: grafana
+          port: 80
+```
 
-   Vytvorte súbor `${WAC_ROOT}/apps/observability-webc/grafana.webcomponent.yaml`:
+Create the file `${WAC_ROOT}/apps/observability-webc/grafana.webcomponent.yaml`:
 
-   ```yaml
-   apiVersion: fe.milung.eu/v1
-   kind: WebComponent
-   metadata:
-     name: grafana
-   spec:
-     module-uri: built-in
-     navigation:
-     - attributes:
-       - name: src
-         value: /grafana
-       details: Aktuálny operačný stav systému
-       element: ufe-frame
-       path: grafana
-       priority: 0
-       title: System Dashboards
-     preload: false
-     proxy: true
-   ```
+```yaml
+apiVersion: fe.milung.eu/v1
+kind: WebComponent
+metadata:
+  name: grafana
+spec:
+  module-uri: built-in
+  navigation:
+  - attributes:
+    - name: src
+      value: /grafana
+    details: Aktuálny operačný stav systému
+    element: ufe-frame
+    path: grafana
+    priority: 0
+    title: System Dashboards
+  preload: false
+  proxy: true
+```
 
-   a upravte súbor `${WAC_ROOT}/ambulance-gitops/apps/observability-webc/kustomization.yaml`:
+and modify the file `${WAC_ROOT}/ambulance-gitops/apps/observability-webc/kustomization.yaml`:
 
-   ```yaml
-   ...
-   resources:
-    - monitoring-opensearch.webcomponent.yaml
-    - monitoring-opensearch.http-route.yaml
-    - grafana.webcomponent.yaml     @_add_@
-    - grafana.http-route.yaml     @_add_@
-   ```
+```yaml
+...
+resources:
+- monitoring-opensearch.webcomponent.yaml
+- monitoring-opensearch.http-route.yaml
+- grafana.webcomponent.yaml     @_add_@
+- grafana.http-route.yaml     @_add_@
+```
 
-4. Upravte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/prepare/kustomization.yaml`:
+4. Modify the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/prepare/kustomization.yaml`:
 
-   ```yaml
-   ...
-   resources:
-   ...
-   - ../../../infrastructure/fluentbit
-   - ../../../infrastructure/prometheus @_add_@
-   - ../../../infrastructure/grafana @_add_@
-   ...
-   ```
+```yaml
+...
+resources:
+...
+- ../../../infrastructure/fluentbit
+- ../../../infrastructure/prometheus @_add_@
+- ../../../infrastructure/grafana @_add_@
+...
+```
 
-5. Overte správnosť konfigurácie. Otvorte príkazové okno v priečinku `${WAC_ROOT}/ambulance-gitops` a vykonajte príkaz
+5. Verify the configuration correctness. Open a command prompt in the directory `${WAC_ROOT}/ambulance-gitops` and execute the command:
 
-   ```ps
-   kubectl kustomize clusters/localhost/prepare
-   kubectl kustomize clusters/localhost/install
-   ```
+```ps
+kubectl kustomize clusters/localhost/prepare
+kubectl kustomize clusters/localhost/install
+```
 
-   Archivujte Vaše zmeny príkazmy:
+Archive your changes using the command:
 
-   ```ps
-   git add .
-   git commit -m "Added prometheus and grafana"
-   git push
-   ```
+```ps
+git add .
+git commit -m "Added prometheus and grafana"
+git push
+```
 
-   Vyčkajte kým sa zmeny prejavia v klastri:
+Wait for the changes to take effect in the cluster:
 
-   ```ps
-   flux get kustomizations --namespace wac-hospital
-   ```
+```ps
+flux get kustomizations --namespace wac-hospital
+```
 
-6. Otvorte prehliadač a zobrazte si nástroj [Grafana] na adrese [https://wac-hospital.loc/grafana](https://localhost/grafana). Otvorte bočný navigačný panel, zvoľte položku _Connection_ a následne položku _Data Sources_.V zozname zdrojov by ste mali vidieť zdroj údajov pre nástroj [Prometheus], nastavený na adresu `http://prometheus-server.wac-hospital`.
+6. Open your browser and visit the [Grafana] tool at [https://wac-hospital.loc/grafana](https://localhost/grafana). Open the side navigation panel, select _Connection_, and then select _Data Sources_. In the list of data sources, you should see the data source for [Prometheus], configured with the address `http://prometheus-server.wac-hospital`.
 
-   ![Grafana - zdroje údajov](img/090-01-GrafanaDataSources.png)
+![Grafana - Data Sources](img/090-01-GrafanaDataSources.png)
 
-   Stlačte na tlačidlo _Explore_ v sekcii _Prometheus_. Zobrazí sa Vám okno v ktorom môžete vyhľadávať jednotlivé dostupné metriky a vytvárať ich agregácie a grafy. Prepnite mód zobrazenie z _Builder_ na _Code_ a do vstupného poľa označeného _Enter PromQL query ..._ zadajte nasledujúci dotaz:
+Press the _Explore_ button in the _Prometheus_ section. A window will appear where you can search for individual available metrics and create aggregations and graphs. Switch the display mode from _Builder_ to _Code_ and enter the following query into the input field labeled _Enter PromQL query ..._:
 
-   ```plain
-   irate(container_cpu_usage_seconds_total{namespace="wac-hospital"}[10m])
-   ```
 
-   Prepnite mód zobrazenia späť do módu _Builder_ a v hornej časti panela prepnite voľbu _Explain_. Otvorte panel _Options_ a v poli _Legend_ zvoľte možnosť _Custom_ a následne zadajte {{pod}}. Nakoniec stlačte tlačidlo _Run Query_ v pravom hornom rohu stránky. Výsledný panel aj s grafom aktuálneho vyťaženia CPU jednotlivými podmi v [_namespace_](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)  `wac-hospital` by mal vyzerať nasledovne:
+```plain
+irate(container_cpu_usage_seconds_total{namespace="wac-hospital"}[10m])
+```
 
-   ![Graf zaťaženia CPU podmi v namespace wac-hospital](img/090-02-CpuGraph.png)
+Switch the display mode back to _Builder_, and at the top of the panel, switch to _Explain_. Open the _Options_ panel, and in the _Legend_ field, choose _Custom_ and then enter {{pod}}. Finally, press the _Run Query_ button in the top right corner of the page. The resulting panel with the graph of current CPU usage by individual pods in the [_namespace_](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) `wac-hospital` should look like this:
 
-   Stlačte na tlačidlo _Add to dashboard_ a vytvorte nový údajový panel stlačením tlačidla _Open Dashboard_. Zobrazí sa Vám stránka s údajovým panelom pre aktuálne vyťaženie CPU. Myšou prejdite nad panel a v pravom hornom rohu zobrazte _Menu_ a zvoľte _Edit_. Zobrazí sa režim úprav panelu. Stlačte tlačidlo voľby zobrazenia - momentálne _Time series_ - a následne tlačidlo _Suggestion_. Zvoľte si Vami preferovaný spôsob zobrazenia, napríklad _Gauge_. Následne stlačte tlačidlo _Apply_.
+![CPU Usage Graph for Pods in the wac-hospital namespace](img/090-02-CpuGraph.png)
 
-   ![Úpravy údajového panela](img/090-03-CpuPanel.png)
+Press the _Add to dashboard_ button and create a new data panel by pressing the _Open Dashboard_ button. A page with a data panel for current CPU usage will appear. Hover over the panel, and in the top right corner, display the _Menu_ and choose _Edit_. The panel edit mode will appear. Press the display options button - currently _Time series_ - and then the _Suggestion_ button. Choose your preferred display method, such as _Gauge_. Then press the _Apply_ button.
 
-   Stlačte na ikonu _Save dashboard_ a uložte si údajový panel pod názvom `WAC Hospital CPU`. Následne stlačte na tlačidlo _Save_. Pokiaľ teraz prejdete na úvodnú stránku [https://wac-hospital.loc/grafana](https://wac-hospital.loc/grafana), uvidíte v zozname panelov - _dashboards_ - aj Vami uložený panel `WAC Hospital CPU`.
+![Editing the Data Panel](img/090-03-CpuPanel.png)
 
-   >homework:> Rozšírte údajový panel o ďaľšie metriky, napríklad o aktuálne vyťaženie pamäte, alebo o aktuálne vyťaženie CPU jednotlivých podov v [_namespace_](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) `wac-hospital`. (Hľadajte metriku `container_memory_usage_bytes`). Vyskúšajte rôzne spôsoby vizualizácie metrík. Viac podrobností o možnostiach vizualizácie metrík nájdete v [dokumentácii nástroja Grafana](https://grafana.com/docs/grafana/latest/panels/visualizations/).
+Press the _Save dashboard_ icon and save the data panel with the name `WAC Hospital CPU`. Then press the _Save_ button. If you now go to the home page [https://wac-hospital.loc/grafana](https://wac-hospital.loc/grafana), you will see your saved panel `WAC Hospital CPU` in the list of dashboards.
 
-Metriky V kombinácii s analýzou logov dávajú tímom pracujúcim technikou DevOps okamžitý náhľad na operačný stav aplikácie nasadenej v dátovom centre. Môžu sledovať priebeh jej zaťaženia, reakcie systému na zmeny v aktuálnom zaťažení a optimalizovať implementáciu systému. Metriky ktoré máme momentálne k dispozícii sú generované najme službou [_node-exporter_](https://github.com/prometheus/node_exporter) a [_kube-state-metrics_](https://github.com/kubernetes/kube-state-metrics). V nasledujúcej časti si ukážeme ako generovať metriky špecifické pre našu aplikáciu.
+>homework:> Expand the data panel with additional metrics, such as current memory usage or current CPU usage of individual pods in the [_namespace_](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) `wac-hospital`. (Look for the metric `container_memory_usage_bytes`). Try various ways of visualizing metrics. More details about visualization options can be found in the [Grafana documentation](https://grafana.com/docs/grafana/latest/panels/visualizations/).
 
->info:> Tu uvádzané nastroje sú ukážkou populárnych nástrojov na monitorovanie systémov, pravdaže nie sú jedinými.  V prípade, že máte záujem aj o iné nástroje, môžete si ich vyhľadať na stránke [CNCF Landscape](https://landscape.cncf.io/card-mode?category=observability-and-analysis&grouping=category).
+Metrics, in combination with log analysis, provide DevOps teams with an immediate insight into the operational state of an application deployed in a data center. They can monitor its load progression, system responses to changes in current load, and optimize the system implementation. The metrics currently available are mainly generated by the [_node-exporter_](https://github.com/prometheus/node_exporter) and [_kube-state-metrics_](https://github.com/kubernetes/kube-state-metrics) services. In the next section, we'll show you how to generate metrics specific to our application.
+
+>info:> The tools mentioned here are examples of popular monitoring tools; they are not the only ones. If you are interested in other tools, you can search for them on the [CNCF Landscape](https://landscape.cncf.io/card-mode?category=observability-and-analysis&grouping=category) page.
+

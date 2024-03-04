@@ -1,4 +1,4 @@
-# Správca Service Mesh - Linkerd
+# Service Mesh Administrator - Linkerd
 
 ---
 
@@ -8,257 +8,255 @@ devcontainer templates apply -t registry-1.docker.io/milung/wac-mesh-130
 
 ---
 
-V predchadzajúcich sekciach sme si ukázali ako zabezpečiť náš systém zložený z viacerých mikroslužieb a ako zabezpečiť smerovanie požiadaviek a sledovanie činnosti systému. Každáz týchto vlastností zároveň pridáva vlastnú sadu mikroslužieb. Náš systém je preto vhodné chápať ako konštrukt navzájom prepojených (mikro-)služieb, kde každá z týchto služieb reprezentuje jeden stavebný prvok systému, ktorý je samostatne verzionovateľný a nasaditeľný v rôznych systémoch a prostrediach. Takýto systém prepojených služieb sa nazýva aj [_Service Mesh_](https://en.wikipedia.org/wiki/Service_mesh).
+In the previous sections, we demonstrated how to secure our system composed of multiple microservices and ensure request routing and system activity monitoring. Each of these features adds its own set of microservices. Therefore, it is appropriate to understand our system as a structure of interconnected (micro-)services, where each of these services represents a building block of the system, independently versioned and deployable in various systems and environments. Such a system of interconnected services is also called a [_Service Mesh_](https://en.wikipedia.org/wiki/Service_mesh).
 
-V tejto sekcii si ukážeme ako nasadiť doplňujúce nástroje pre správu _Service Mesh_-u do nášho klastra. Tieto nástroje sa označujú rovnakým názvom - _Service Mesh_,  je dobré v praxi explicitne rozlišovať či pod pojmom _Service_mesh_ máte na mysli softvérový architektonický vzor, alebo konkrétny nástroj na správu systéme. V našom prípade použijeme nástroj  [Linkerd], ktorá je jednou z najpoužívanejších služieb pre správu [_Service Mesh_](https://en.wikipedia.org/wiki/Service_mesh) v klastri Kubernetes. Ďaľšie populárne nástroje sú napríklad [Istio](https://istio.io/latest/) alebo [Open Service Mesh](https://openservicemesh.io/), ale aj ďalšie, ktoré môžete nájsť na stránkach [CNCF Landscape](https://landscape.cncf.io/card-mode?category=service-mesh&grouping=category).
+In this section, we will show how to deploy additional tools for managing the _Service Mesh_ into our cluster. These tools are referred to by the same name - _Service Mesh_. In practice, it is good to explicitly distinguish whether you mean the software architectural pattern by the term _Service Mesh_ or a specific tool for managing systems. In our case, we will use the tool [Linkerd], which is one of the most commonly used services for managing [_Service Mesh_](https://en.wikipedia.org/wiki/Service_mesh) in Kubernetes clusters. Other popular tools include [Istio](https://istio.io/latest/) or [Open Service Mesh](https://openservicemesh.io/), as well as others that you can find on the [CNCF Landscape](https://landscape.cncf.io/card-mode?category=service-mesh&grouping=category) page.
 
-Nástroje typu _Service Mesh_ poskytujú rôzne doplňujúce služby pre systémy založené na mikroslužbách, konkrétny zoznam je závislí od použitého nástroja. Medzi spoločné črty patrí riadenie toku požiadaviek medzi službami, odolnosť voči poruchám, automatické zabezpečenie komunikácie, riadeni prístupu k požiadavkám, či sledovanie systému. V cvičení si ukážeme ako nasadiť nástroj [Linkerd] do nášho klastra a ako pomocou neho zabezpečiť zvýšenú spoľahlivosť systému a zabezpečiť komunikáciu medzi službami. Linkerd nám automaticky poskytne aj sledovanie komunikácie na úrovni toku údajov medzi jednotlivými službami, ktoré doplní naše distribuované trasovanie z predchádzajúcich častí o ďaľšie informácie.
+_Service Mesh_ tools provide various complementary services for microservices-based systems, and the specific list depends on the tool used. Common features include request flow control between services, fault tolerance, automatic communication security, access control management, and system monitoring. In this exercise, we will demonstrate how to deploy the [Linkerd] tool into our cluster and use it to enhance system reliability and secure communication between services. Linkerd will automatically provide us with communication monitoring at the data flow level between individual services, adding further information to our distributed tracing from previous sections.
 
-Pri inštalácii [Linkerd] budeme postupovať podľa návodu na stránke [_Installing Linkerd with Helm_](https://linkerd.io/2.14/tasks/install-helm/). 
+When installing [Linkerd], we will follow the guide on the [_Installing Linkerd with Helm_](https://linkerd.io/2.14/tasks/install-helm/) page.
 
-1. Vytvorte priečinok `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd` a v ňom súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/helm-repository.yaml` s obsahom
+1. Create a folder `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd` and within it, create the file `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/helm-repository.yaml` with the content
 
-   ```yaml
-   apiVersion: helm.fluxcd.io/v1
-   kind: HelmRepository
-   metadata:
-     name: linkerd
-     namespace: linkerd
-   spec:
-     interval: 1m
-     url: https://helm.linkerd.io/stable
-   ```
+```yaml
+apiVersion: helm.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: linkerd
+  namespace: linkerd
+spec:
+  interval: 1m
+  url: https://helm.linkerd.io/stable
+```
 
-   Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/crds.helm-release.yaml` s obsahom
+Create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/crds.helm-release.yaml` with the content
 
-   ```yaml
-   apiVersion: helm.toolkit.fluxcd.io/v2beta1
-   kind: HelmRelease
-   metadata:
-     name: linkerd-crds
-     namespace: linkerd
-   spec:
-     interval: 1m
-     chart:
-       spec:
-         chart: linkerd-crds
-         sourceRef:
-           kind: HelmRepository
-           name: linkerd
-           namespace: linkerd
-         interval: 1m
-         reconcileStrategy: Revision
-     values:
-       # we already have Gateway API subsystem installed
-       enableHttpRoutes: false
-   ```
+```yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: linkerd-crds
+  namespace: linkerd
+spec:
+  interval: 1m
+  chart:
+    spec:
+      chart: linkerd-crds
+      sourceRef:
+        kind: HelmRepository
+        name: linkerd
+        namespace: linkerd
+      interval: 1m
+      reconcileStrategy: Revision
+  values:
+    # we already have Gateway API subsystem installed
+    enableHttpRoutes: false
+```
 
-   Tento súbor zabezpečí [_Custom Resource Definition_](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) pre službu [Linkerd]. Tieto definície rozširujú základnú funkcionalitu Kubernetes o nové objekty, a tým spristupní funkcionalitu nástroja [Linkerd] formou deklaratívnej konfigurácie.
+This file will provide the [_Custom Resource Definition_](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) for the [Linkerd] service. These definitions extend the basic functionality of Kubernetes with new objects, thus exposing the functionality of the [Linkerd] tool through declarative configuration.
 
-     Tento súbor zabezpečí [_Custom Resource Definition_](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) pre službu [Linkerd]. Tieto definície rozširujú základnú funkcionalitu Kubernetes o nové objekty, a tým spristupní funkcionalitu nástroja [Linkerd] formou deklaratívnej konfigurácie.
+Create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/control-plane.helm-release.yaml` with the content
 
-   Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/control-plane.helm-release.yaml` s obsahom
+```yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: linkerd-control-plane
+  namespace: linkerd
+spec:
+  interval: 1m
+  dependsOn:  @_important_@
+  - name: linkerd-crds @_important_@
+  chart:
+    spec:
+      chart: linkerd-control-plane
+      sourceRef:
+        kind: HelmRepository
+        name: linkerd
+        namespace: linkerd
+      interval: 1m
+      reconcileStrategy: Revision
+  values:
+    prometheusUrl: http://prometheus-server.wac-hospital
+  valuesFrom:
+    valuesFrom:
+    # identity trust anchor certificate (shared accross clusters)
+    - kind: Secret
+      name: linkerd-trust-anchor
+      valuesKey: tls.crt
+      targetPath: identityTrustAnchorsPEM
+```
 
-   ```yaml
-   apiVersion: helm.toolkit.fluxcd.io/v2beta1
-   kind: HelmRelease
-   metadata:
-     name: linkerd-control-plane
-     namespace: linkerd
-   spec:
-     interval: 1m
-     dependsOn:  @_important_@
-     - name: linkerd-crds @_important_@
-     chart:
-       spec:
-         chart: linkerd-control-plane
-         sourceRef:
-           kind: HelmRepository
-           name: linkerd
-           namespace: linkerd
-         interval: 1m
-         reconcileStrategy: Revision
-     values:
-        prometheusUrl: http://prometheus-server.wac-hospital
-     valuesFrom:
-       valuesFrom:
-       # identity trust anchor certificate (shared accross clusters)
-       - kind: Secret
-         name: linkerd-trust-anchor
-         valuesKey: tls.crt
-         targetPath: identityTrustAnchorsPEM
-   ```
+During the installation of the [Linkerd] service, it is necessary to specify certificates from [_certificate authorities_](https://en.wikipedia.org/wiki/Certificate_authority) that will be used to verify the authenticity of certificates issued by [Linkerd] services. These are specified here as installation parameters.
 
-   Pri inštalácii služby [Linkerd] je potrebné špecifikovať certifikáty [_certifikačných autorít_](https://en.wikipedia.org/wiki/Certificate_authority), ktoré budú použité na overenie pravosti certifikátov vydávaných službami [Linkerd]. Tieto sú tu špecifikované ako parametre inštalácie.
+Add the installation of `jaeger-injector` to the file `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/jaeger-injector.helm-release.yaml` with the content
 
-   Pridajte inštaláciu `jaeger-injector` do súboru `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/jaeger-injector.helm-release.yaml` s obsahom
+```yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: linkerd-jaeger-injector
+  namespace: linkerd
+spec:
+  interval: 1m
+  dependsOn:  
+  - name: linkerd-control-plane   @_important_@
+  chart:
+    spec:
+      chart: linkerd-jaeger
+      sourceRef:
+        kind: HelmRepository
+        name: linkerd
+        namespace: linkerd
+      interval: 1m
+      reconcileStrategy: Revision
+  values:
+    # we already have Jaeger collector, installing only jaeger injector webhook
+    # to ensure linkerd proxies are configured to send traces to existing collector
+    collector:
+      enabled: false   @_important_@
+    jaeger:
+      enabled: false   @_important_@
+    webhook:
+      collectorSvcAddr: "jaeger-collector.wac-hospital:14268"
+      collectorSvcName: jaeger-collector.wac-hospital
+```
 
-   ```yaml
-   apiVersion: helm.toolkit.fluxcd.io/v2beta1
-   kind: HelmRelease
-   metadata:
-     name: linkerd-jaeger-injector
-     namespace: linkerd
-   spec:
-     interval: 1m
-     dependsOn:  
-     - name: linkerd-control-plane   @_important_@
-     chart:
-       spec:
-         chart: linkerd-jaeger
-         sourceRef:
-           kind: HelmRepository
-           name: linkerd
-           namespace: linkerd
-         interval: 1m
-         reconcileStrategy: Revision
-     values:
-       # we already have Jaeger collector, installing only jaeger injector webhook
-       # to ensure linkerd proxies are configured to send traces to existing collector
-       collector:
-         enabled: false   @_important_@
-       jaeger:
-         enabled: false   @_important_@
-       webhook:
-         collectorSvcAddr: "jaeger-collector.wac-hospital:14268"
-         collectorSvcName: jaeger-collector.wac-hospital
-   ```
+With this configuration, we ensure that the [Linkerd] proxies are configured to send the computation scope - _span_ - to the [Jaeger] service we installed in the previous section.
 
-   Touto konfiguráciou zabezpečíme aby [Linkerd] proxy boli nakonfigurované na odosielanie rozsahu výpočtu -  _span_ - do služby [Jaeger], ktorú sme nainštalovali v predchádzajúcej časti.
+>info:> In the exercise, we could have proceeded by adding the installation of [Linkerd] to the cluster and leveraging provided features like [Gateway API], metrics, and distributed tracing. However, for didactic reasons, we chose to incrementally add individual features, explaining their contributions to the overall system and understanding their functionality as separate entities. In practice, it is possible to proceed in the opposite way and deploy primarily one of the _Service Mesh_ tools, which provides all these features as part of the installation.
 
-   >info:> V cvičení sme mohli postupovať aj spôsobom. kedy by sme do klastra pridali inštaláciu [Linkerd] a využívali poskytnuté črty ako [Gateway API], metriky, a distribuované trasovanie. Z didaktických dôvodov sme ale zvolili postupné pridávanie jednotlivých čŕt s vysvetlením ich prínosov k celkovému syystému a pochopeniu ich funkcionality ako samostatných celkov. V praxi je ale možné postupovať aj opačne a nasadiť primárne niektorý z nástrojov typu _Service Mesh_, ktorý poskytbe všetky tieto črty ako súčasť inštalácie.
+Create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/namespace.yaml` with the content
 
-   Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/namespace.yaml` s obsahom
+```yaml
+ApiVersion: v1
+kind: Namespace
+metadata:
+name: linkerd
+```
 
-   ```yaml
-   ApiVersion: v1
-   kind: Namespace
-   metadata:
-    name: linkerd
-   ```
+and integrate the manifests in the file `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/kustomization.yaml`
 
-   a integrujte manifesty v súbore `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/kustomization.yaml` 
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization    
 
-    ```yaml
-    apiVersion: kustomize.config.k8s.io/v1beta1
-    kind: Kustomization    
+namespace: linkerd    
 
-    namespace: linkerd    
+resources:
+- namespace.yaml
+- helm-repository.yaml
+- crds.helm-release.yaml
+- control-plane.helm-release.yaml
+- jaeger-injector.helm-release.yaml
+```
 
-    resources:
-    - namespace.yaml
-    - helm-repository.yaml
-    - crds.helm-release.yaml
-    - control-plane.helm-release.yaml
-    - jaeger-injector.helm-release.yaml
-   ```
+2. Before deploying [Linkerd] into the cluster, we need to create the certificates for the `linkerd-trust-anchor` object. This certificate from the [_certificate authority_](https://en.wikipedia.org/wiki/Certificate_authority) will be used to verify the authenticity of identities in communication between different clusters. In a production environment, such an intermediary CA certificate would be obtained from your organization's cybersecurity department. Here, we will generate our own certificate pair for our development server. Install the _step CLI_ tool following the instructions on the [smallstep - Install step](https://smallstep.com/docs/step-cli/installation/#windows) page. For example, open a command prompt in a directory outside your repository and execute the commands
 
-2. Pred nasadením [linkerd] do klastra musíme vytvoriť samotné certifikáty pre objekt  `linkerd-trust-anchor`. Tento certikát [_certifikačnej autority_](https://en.wikipedia.org/wiki/Certificate_authority) bude slúžiť na overenie pravosti identít požiadaviek pri komunikácii medzi rôznymi klastrami. V produkčnom prostredí takyto certifikát _intermediary CA_ získate z oddelenia kybernetickej bezpečnosti Vašej organizácia, tu si vygenerujeme vlastný pár certifikátov pre náš vývojový server. Nainštalujte nástroj _step CLI_ podľa návodu na stránke [smallstep -  Install step](https://smallstep.com/docs/step-cli/installation/#windows). Napríklad, otvorte okno v priečinku mimo Vášho repozitára a vykonajte príkazy
+```ps
+curl.exe -LO https://dl.smallstep.com/cli/docs-cli-install/latest/step_windows_amd64.zip
+Expand-Archive -LiteralPath .\step_windows_amd64.zip -DestinationPath .
+step_windows_amd64\bin\step.exe version
+$env:PATH += ";$pwd\step_windows_amd64\bin"
+```
 
-   ```ps
-   curl.exe -LO https://dl.smallstep.com/cli/docs-cli-install/latest/step_windows_amd64.zip
-   Expand-Archive -LiteralPath .\step_windows_amd64.zip -DestinationPath .
-   step_windows_amd64\bin\step.exe version
-   $env:PATH += ";$pwd\step_windows_amd64\bin"
-   ```
+>info:> Instructions for installing the _step CLI_ tool on other platforms can be found on the [smallstep - Install step](https://smallstep.com/docs/step-cli/installation/) page.
 
-   >info:> Návod na inštaláciu nástroja _step CLI_ pre iné platformy nájdete na stránke [smallstep -  Install step](https://smallstep.com/docs/step-cli/installation/).
+In the command prompt window, navigate to the `${WAC_ROOT}/ambulance-gitops/clusters/localhost/secrets/params` directory and generate the certificate for the global [_certificate authority_](https://en.wikipedia.org/wiki/Certificate_authority) using the following command.
 
-   V okne príkazového riadku prejdite do priečinku  `${WAC_ROOT}/ambulance-gitops/clusters/localhost/secrets/params` vygenerujte certifikát globálnej [_certifikačnej autority_](https://en.wikipedia.org/wiki/Certificate_authority), pomocou nasledujúceho príkazu.
+```ps
+step certificate create root.linkerd.cluster.local linkerd-ca.crt linkerd-ca.key --profile root-ca --no-password --insecure
+```
 
-   ```ps
-   step certificate create root.linkerd.cluster.local linkerd-ca.crt linkerd-ca.key --profile root-ca --no-password --insecure
-   ```
+If you are using [_SecretsOps for Managing Credentials_](./050-secrets-ops.md), encrypt the created certificates with the following commands.
 
-   Pokiaľ používate [_Správu prihlasovacích údajov pomocou SecretsOps](./050-secrets-ops.md), zakryptujte vytvorené certifikáty príkazmi
+```ps
+sops --encrypt --in-place ./linkerd-ca.crt
+sops --encrypt --in-place ./linkerd-ca.key
+```
 
-   ```ps
-   sops --encrypt --in-place ./linkerd-ca.crt
-   sops --encrypt --in-place ./linkerd-ca.key
-   ```
+If you are not using _SecretOps_, ensure that the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/secrets/params/linkerd-issuer.key` is not archived into the git repository - modify the `.gitignore` file.
 
-   Pokiaľ _SecretOps_ nepoužívate, zabezpečte aby tieto súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/secrets/params/linkerd-issuer.key` nebol archivovaný do repozitára git - upravte súbor `.gitignore`.
+Edit the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/secrets/kustomization.yaml` and add the following
 
-   Upravte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/secrets/kustomization.yaml` a pridajte do neho
+```yaml
+...   
+secretGenerator:
+  ...    
+  - name: linkerd-trust-anchor    @_add_@
+    type: kubernetes.io/tls    @_add_@
+    options:    @_add_@
+        disableNameSuffixHash: true    @_add_@
+    files:    @_add_@
+    - tls.crt=params/linkerd-ca.crt    @_add_@
+    - tls.key=params/linkerd-ca.key    @_add_@
+```
 
-   ```yaml
-   ...   
-   secretGenerator:
-     ...    
-     - name: linkerd-trust-anchor    @_add_@
-       type: kubernetes.io/tls    @_add_@
-       options:    @_add_@
-           disableNameSuffixHash: true    @_add_@
-       files:    @_add_@
-       - tls.crt=params/linkerd-ca.crt    @_add_@
-       - tls.key=params/linkerd-ca.key    @_add_@
-   ```
+In addition to the [_certificate authority_](https://en.wikipedia.org/wiki/Certificate_authority) certificate, it is necessary to create a certificate for the local [_certificate authority_](https://en.wikipedia.org/wiki/Certificate_authority) for the [Linkerd] service, which will issue certificates for individual services (_linkerd-proxy_) within our cluster. In this case, we will use the already installed [cert-manager] service, which will ensure the creation of a certificate for the intermediary [_certificate authority_](https://en.wikipedia.org/wiki/Certificate_authority) verified by the certificate stored in the `linkerd-trust-anchor` object. The advantage of using the [cert-manager] service is that it will automatically renew the certificate in case of expiration, and its validity can be short-lived, increasing the system's security.
 
-   Okrem tohto certifikátu [_certifikačnej autority_](https://en.wikipedia.org/wiki/Certificate_authority) je potrebné vytvoriť aj certifikát pre lokálnu [_certifikačnú autoritu_](https://en.wikipedia.org/wiki/Certificate_authority) pre službu [Linkerd], ktorá bude vydávať samotné certifikáty pre jednotlivé služby (_linkerd-proxy_) v rámci nášho klastra. V tomto prípade využijeme už nainštalovanú službu [cert-manager], ktorá nám zabezpečí vytvorenie certifikátu pre intermediary [_certifikačnú autoritu_](https://en.wikipedia.org/wiki/Certificate_authority) overeného certifikátom uloženom v objekte `linkerd-trust-anchor`. Výhodou použitia služby [cert-manager] je, že nám automaticky obnoví certifikát v prípade jeho expirácie a jeho platnosť môže byť krátko dobá, čím sa zvýši bezpečnosť systému.
+>info:> It would be possible to create the `linkerd-trust-anchor` object using the [cert-manager] service, similar to what we did in the chapter [Secure Connection to the Application using HTTPS](./040-secure-connection.md). However, this would not reflect the fact that this certificate is intended for verifying identities between different clusters.
 
-   >info:> Objekt `linkerd-trust-anchor` by bolo možné tiež vytvoriť pomocou služby [cert-manager], podobne ako sme to urobili v kapitole [Bezpečné pripojenie k aplikácii protokolom HTTPS](./040-secure-connection.md), to by však nezodpovedalo skutočnosti, že tento certifikát má byť použitý na overenie identity medzi rôznymi klastrami
+Create a file `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/control-plane.issuer.yaml` with the content
 
-   Vytvorte súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/control-plane.issuer.yaml` s obsahom
-  
-   ```yaml
-   apiVersion: cert-manager.io/v1
-   kind: Issuer
-   metadata:
-     name: linkerd-trust-anchor
-     namespace: linkerd
-   spec:
-     ca:
-       secretName: linkerd-trust-anchor   @_important_@
-   ```
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: linkerd-trust-anchor
+  namespace: linkerd
+spec:
+  ca:
+    secretName: linkerd-trust-anchor   @_important_@
+```
 
-   a súbor `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/control-plane.certificate.yaml` s obsahom
+and the file `${WAC_ROOT}/ambulance-gitops/infrastructure/linkerd/control-plane.certificate.yaml` with the content
 
-   ```yaml
-   apiVersion: cert-manager.io/v1
-   kind: Certificate
-   metadata:
-     name: linkerd-identity-issuer 
-   spec:
-     secretName: linkerd-identity-issuer @_important_@
-     duration: 48h
-     renewBefore: 25h
-     issuerRef:
-       name: linkerd-trust-anchor  @_important_@
-       kind: Issuer
-     commonName: identity.linkerd.cluster.local @_important_@
-     dnsNames:
-     - identity.linkerd.cluster.local
-     isCA: true @_important_@
-     privateKey:
-       algorithm: ECDSA
-     usages:
-     - cert sign
-     - crl sign
-     - server auth
-     - client auth
-   ```
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: linkerd-identity-issuer 
+spec:
+  secretName: linkerd-identity-issuer @_important_@
+  duration: 48h
+  renewBefore: 25h
+  issuerRef:
+    name: linkerd-trust-anchor  @_important_@
+    kind: Issuer
+  commonName: identity.linkerd.cluster.local @_important_@
+  dnsNames:
+  - identity.linkerd.cluster.local
+  isCA: true @_important_@
+  privateKey:
+    algorithm: ECDSA
+  usages:
+  - cert sign
+  - crl sign
+  - server auth
+  - client auth
+```
 
-3. Upravte súbor `${WAC_ROOT}/ambulance-gitops/clusters/localhost/prepare/kustomization.yaml` a pridajte do neho
+3. Edit the file `${WAC_ROOT}/ambulance-gitops/clusters/localhost/prepare/kustomization.yaml` and add the following
 
-   ```yaml
-   ...
-   resources:
-   ...
-   - ../../../infrastructure/linkerd   @_add_@
+```yaml
+...
+resources:
+...
+- ../../../infrastructure/linkerd   @_add_@
 
-   patches: 
-   ...
-   ```
+patches: 
+...
+```
 
-4. Uložte zmenené súbory a archivujte zmeny do vzdialeného repozitára
+4. Save the modified files and commit the changes to the remote repository
 
-   ```ps
-   git add .
-   git commit -m "Add linkerd"
-   git push
-   ```
+```ps
+git add .
+git commit -m "Add linkerd"
+git push
+```
 
-Počkajte kým sa zmeny prejavia v klastri a následne overte správnosť inštalácie  príkazmi
+Wait for the changes to take effect in the cluster and then verify the installation correctness with the following commands
 
 ```ps
 kubectl get helmreleases -n linkerd
